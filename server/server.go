@@ -30,6 +30,8 @@ func New(fifoPath string) (*Server, error) {
 	}, nil
 }
 
+// Start starts running the server and listening for RPC calls, blcoking until
+// exit.
 func (s *Server) Start(_ bool, _ *bool) error {
 	log.Debug("Registering RPC interface")
 	if err := rpc.Register(s); err != nil {
@@ -51,7 +53,7 @@ func (s *Server) Start(_ bool, _ *bool) error {
 
 		for {
 			sig := <-signals
-			log.Warn("Got interrupt/kill signal", "signal", sig)
+			log.Info("Got interrupt/kill signal", "signal", sig)
 
 			var nothing bool
 			if err := s.Exit(nothing, &nothing); err != nil {
@@ -80,21 +82,6 @@ func (s *Server) Start(_ bool, _ *bool) error {
 	}
 
 	log.Debug("Done listening")
-
-	return nil
-}
-
-func (s *Server) Exit(_ bool, _ *bool) error {
-	log.Warn("Exiting server")
-	close(s.stop)
-
-	log.Debug("Connecting to server to break out of listen loop")
-	if conn, err := net.DialUnix("unix", nil, s.fifoAddr); err != nil {
-		return err
-	} else {
-		conn.Close()
-		log.Debug("Connected and closed")
-	}
 
 	return nil
 }
