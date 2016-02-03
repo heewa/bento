@@ -1,10 +1,13 @@
 package service
 
 import (
+	"fmt"
 	"os/exec"
+	"os/user"
 )
 
 type Service struct {
+	// Read-only, ignored at runtime
 	Name    string
 	Program string
 	Args    []string
@@ -14,17 +17,48 @@ type Service struct {
 	cmd *exec.Cmd
 }
 
-func New(program string, args []string) (*Service, error) {
+func New(name string, program string, args []string, dir string, env map[string]string) (*Service, error) {
+	if name == "" {
+		name = program
+	}
+
 	programPath, err := exec.LookPath(program)
 	if err != nil {
 		return nil, err
+	}
+
+	cmd := exec.Command(programPath, args...)
+
+	if dir != "" {
+		cmd.Dir = dir
+	} else {
+		usr, err := user.Current()
+		if err != nil {
+			return nil, err
+		}
+		cmd.Dir = usr.HomeDir
+	}
+
+	if env != nil {
+		var envItems []string
+		for key, value := range env {
+			envItems = append(envItems, fmt.Sprintf("%s=%s", key, value))
+		}
+		cmd.Env = envItems
+	} else {
+		// Explicitly set it to empty
+		cmd.Env = []string{}
 	}
 
 	return &Service{
 		Name:    program,
 		Program: programPath,
 
-		cmd: exec.Command(programPath, args...),
+		Args: args,
+		Dir:  cmd.Dir,
+		Env:  env,
+
+		cmd: cmd,
 	}, nil
 }
 
