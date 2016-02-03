@@ -117,12 +117,12 @@ func getClient() (*rpc.Client, error) {
 	go func() {
 		// Try to connect if fifo exists
 		if _, err = os.Stat(*fifo); err == nil {
-			if client, err := rpc.Dial("unix", addr.String()); err == nil {
+			client, err := rpc.Dial("unix", addr.String())
+			if err == nil {
 				clientChan <- client
 				return
-			} else {
-				log.Debug("Error connecting to server", "err", err)
 			}
+			log.Debug("Error connecting to server", "err", err)
 		} else if !os.IsNotExist(err) {
 			log.Error("Problem with fifo", "err", err)
 			clientChan <- nil
@@ -168,12 +168,12 @@ func getClient() (*rpc.Client, error) {
 
 			// Only attemp if fifo even exists
 			if _, err = os.Stat(*fifo); err == nil {
-				if client, err := rpc.Dial("unix", addr.String()); err == nil {
+				client, err := rpc.Dial("unix", addr.String())
+				if err == nil {
 					clientChan <- client
 					return
-				} else {
-					log.Debug("Error connecting to server", "err", err)
 				}
+				log.Debug("Error connecting to server", "err", err)
 			}
 		}
 	}()
