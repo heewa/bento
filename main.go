@@ -211,7 +211,7 @@ func handleInit(_ *rpc.Client) error {
 	}
 
 	var nothing bool
-	return server.Start(nothing, &nothing)
+	return server.Init(nothing, &nothing)
 }
 
 func handleShutdown(client *rpc.Client) error {

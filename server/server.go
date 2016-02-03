@@ -39,7 +39,7 @@ func New(fifoPath string) (*Server, error) {
 
 // Start starts running the server and listening for RPC calls, blcoking until
 // exit.
-func (s *Server) Start(_ bool, _ *bool) error {
+func (s *Server) Init(_ bool, _ *bool) error {
 	log.Debug("Registering RPC interface")
 	if err := rpc.Register(s); err != nil {
 		return err
