@@ -7,6 +7,7 @@ import (
 	"net/rpc"
 	"os"
 	"os/exec"
+	"os/user"
 	"strings"
 	"time"
 
@@ -21,7 +22,7 @@ var (
 
 	verbosity = kingpin.Flag("verbose", "Increase log verbosity, can be used multiple times").Short('v').Counter()
 
-	fifo = kingpin.Flag("fifo", "Path to fifo used to communicate between client and server").Default("/var/run/servicetray.fifo").String()
+	fifo = kingpin.Flag("fifo", "Path to fifo used to communicate between client and server").Default("~/.servicetray.fifo").String()
 
 	// Server Commands
 
@@ -76,6 +77,13 @@ func main() {
 	log.Root().SetHandler(
 		log.LvlFilterHandler(logLevel,
 			log.StdoutHandler))
+
+	// Fix up fifo path if it contains a ~
+	if len(*fifo) > 2 && (*fifo)[:2] == "~/" {
+		if usr, err := user.Current(); err == nil {
+			*fifo = fmt.Sprintf("%s/%s", usr.HomeDir, (*fifo)[2:])
+		}
+	}
 
 	// All other command besides init require a connection to the server
 	var client *rpc.Client
