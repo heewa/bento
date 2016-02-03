@@ -1,12 +1,14 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"net"
 	"net/rpc"
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
 	log "github.com/inconshreveable/log15"
 	"gopkg.in/alecthomas/kingpin.v2"
@@ -107,23 +109,91 @@ func getClient() (*rpc.Client, error) {
 		return nil, fmt.Errorf("Bad fifo path: %v", err)
 	}
 
-	// If the file doesn't exist, server isn't running (there)
-	_, err = os.Stat(*fifo)
-	if os.IsNotExist(err) {
-		// Start a server
-		log.Debug("Server not running, starting one")
-		cmd := exec.Command(os.Args[0], "--fifo", *fifo, "-vv", "init")
-		if err := cmd.Start(); err != nil {
-			return nil, fmt.Errorf("Failed to start server: %v", err)
-		}
-	}
+	// Wait a bit for the service to start, but not forever. Since net calls
+	// block, do it in a goroutine for correct timeout behavior
+	timeout := time.After(5 * time.Second)
+	clientChan := make(chan *rpc.Client)
 
 	log.Debug("Connecting to server")
-	client, err := rpc.Dial("unix", addr.String())
-	if err != nil {
-		return nil, fmt.Errorf("Failed to connect to server: %v", err)
+	go func() {
+		// Try to connect if fifo exists
+		if _, err = os.Stat(*fifo); err == nil {
+			if client, err := rpc.Dial("unix", addr.String()); err == nil {
+				clientChan <- client
+				return
+			} else {
+				log.Debug("Error connecting to server", "err", err)
+			}
+		} else if !os.IsNotExist(err) {
+			log.Error("Problem with fifo", "err", err)
+			clientChan <- nil
+			return
+		}
+
+		cmd := exec.Command(os.Args[0], "--fifo", *fifo, "init")
+		log.Debug("Server might not running, starting one", "args", strings.Join(cmd.Args, " "))
+
+		// Watch stdout & stderr output for server for a bit
+		stdoutPipe, err := cmd.StdoutPipe()
+		if err != nil {
+			log.Debug("Failed to get stdout pipe for server", "err", err)
+		}
+		stdout := bufio.NewScanner(stdoutPipe)
+
+		stderrPipe, err := cmd.StderrPipe()
+		if err != nil {
+			log.Debug("Failed to get stderr pipe for server", "err", err)
+		}
+		stderr := bufio.NewScanner(stderrPipe)
+
+		go func() {
+			for {
+				if stdout.Scan() {
+					log.Debug("Server Log", "line", stdout.Text())
+				} else if stderr.Scan() {
+					log.Debug("Server Error", "line", stderr.Text())
+				} else {
+					break
+				}
+			}
+		}()
+
+		if err := cmd.Start(); err != nil {
+			log.Error("Failed to start server", "err", err)
+			clientChan <- nil
+		}
+
+		// Keep trying to connect, it might take some time
+		for {
+			time.Sleep(500 * time.Millisecond)
+
+			// Only attemp if fifo even exists
+			if _, err = os.Stat(*fifo); err == nil {
+				if client, err := rpc.Dial("unix", addr.String()); err == nil {
+					clientChan <- client
+					return
+				} else {
+					log.Debug("Error connecting to server", "err", err)
+				}
+			}
+		}
+	}()
+
+	var client *rpc.Client
+	select {
+	case client = <-clientChan:
+	case <-timeout:
 	}
 
+	if client == nil {
+		// Try to be helpful with the message. If fifo exists and we still
+		// couldn't connect, maybe the server died before cleaning it up.
+		if _, err = os.Stat(*fifo); err == nil {
+			return nil, fmt.Errorf("Failed to connect to server: timed out. It's possible the server died before cleaning up. Try removing %s and trying again", *fifo)
+		}
+
+		return nil, fmt.Errorf("Failed to connect to server: timed out")
+	}
 	return client, nil
 }
 
