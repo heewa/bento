@@ -1,6 +1,8 @@
 package server
 
 import (
+	"fmt"
+
 	"github.com/heewa/servicetray/service"
 )
 
@@ -28,6 +30,10 @@ func (s *Server) Run(args *RunArgs, reply *RunResponse) error {
 		args.Env)
 	if err != nil {
 		return err
+	}
+
+	if !s.addService(serv, false) {
+		return fmt.Errorf("Service with name '%s' already exists", serv.Name)
 	}
 
 	reply.Service = serv

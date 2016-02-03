@@ -5,14 +5,19 @@ import (
 	"net/rpc"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 
+	"github.com/heewa/servicetray/service"
 	log "github.com/inconshreveable/log15"
 )
 
 // Server is the backend that manages services
 type Server struct {
 	fifoAddr *net.UnixAddr
+
+	services     map[string]*service.Service
+	servicesLock sync.RWMutex
 
 	stop chan interface{}
 }
@@ -27,6 +32,7 @@ func New(fifoPath string) (*Server, error) {
 
 	return &Server{
 		fifoAddr: addr,
+		services: make(map[string]*service.Service),
 		stop:     make(chan interface{}),
 	}, nil
 }
@@ -91,4 +97,35 @@ func (s *Server) Start(_ bool, _ *bool) error {
 	log.Debug("Done listening")
 
 	return nil
+}
+
+func (s *Server) getService(name string) *service.Service {
+	s.servicesLock.RLock()
+	defer s.servicesLock.RUnlock()
+
+	return s.services[name]
+}
+
+func (s *Server) listServices() []*service.Service {
+	s.servicesLock.RLock()
+	defer s.servicesLock.RUnlock()
+
+	services := make([]*service.Service, 0, len(s.services))
+	for _, serv := range s.services {
+		services = append(services, serv)
+	}
+
+	return services
+}
+
+func (s *Server) addService(serv *service.Service, replace bool) bool {
+	s.servicesLock.Lock()
+	defer s.servicesLock.Unlock()
+
+	if !replace && s.services[serv.Name] != nil {
+		return false
+	}
+
+	s.services[serv.Name] = serv
+	return true
 }
