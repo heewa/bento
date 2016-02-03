@@ -14,7 +14,6 @@ import (
 	"gopkg.in/alecthomas/kingpin.v2"
 
 	"github.com/heewa/servicetray/server"
-	"github.com/heewa/servicetray/service"
 )
 
 var (
@@ -250,26 +249,20 @@ func handleStop(client *rpc.Client) error {
 }
 
 func handleRun(client *rpc.Client) error {
-	serv, err := service.New(*runProg, *runArgs)
-	if err != nil {
-		return err
+	args := server.RunArgs{
+		Name:    *runName,
+		Program: *runProg,
+		Args:    *runArgs,
+		Dir:     *runDir,
+		Env:     *runEnv,
 	}
-	if *runName != "" {
-		serv.Name = *runName
-	}
-	if *runDir != "" {
-		serv.Dir = *runDir
-	}
-	if *runEnv != nil {
-		serv.Env = *runEnv
-	}
+	reply := server.RunResponse{}
 
-	fmt.Printf("running %#v\n", serv)
-
-	if err := serv.Start(); err != nil {
+	if err := client.Call("Server.Run", args, &reply); err != nil {
 		return err
 	}
 
+	fmt.Printf("running %#v\n", reply.Service)
 	return nil
 }
 
