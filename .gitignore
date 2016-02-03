@@ -1,3 +1,6 @@
+# Build output
+/main
+
 # Temp dir for local dev without dirtying git state
 /tmp/
 
