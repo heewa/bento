@@ -5,6 +5,7 @@ import (
 	"net/rpc"
 	"os"
 	"os/signal"
+	"syscall"
 
 	log "github.com/inconshreveable/log15"
 )
@@ -43,12 +44,18 @@ func (s *Server) Start(_ bool, _ *bool) error {
 	if err != nil {
 		return err
 	}
-	defer listener.Close()
+	defer func() {
+		if err := listener.Close(); err != nil {
+			log.Error("Failed to close listener", "err", err)
+		} else {
+			log.Info("Closed listener")
+		}
+	}()
 
 	// Handle interrupt & kill signal, to try to clean up
 	go func() {
 		signals := make(chan os.Signal, 1)
-		signal.Notify(signals, os.Interrupt, os.Kill)
+		signal.Notify(signals, os.Interrupt, syscall.SIGTERM, syscall.SIGKILL)
 		defer signal.Stop(signals)
 
 		for {
