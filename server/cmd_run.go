@@ -22,6 +22,14 @@ type RunResponse struct {
 
 // Run will start a new, temp service
 func (s *Server) Run(args *RunArgs, reply *RunResponse) error {
+	if args.Name == "" {
+		// Name it after the program, but avoid collisions by checking
+		args.Name = args.Program
+		for i := 1; i <= 50 && s.getService(args.Name) != nil; i++ {
+			args.Name = fmt.Sprintf("%s (%d)", args.Program, i)
+		}
+	}
+
 	serv, err := service.New(
 		args.Name,
 		args.Program,
