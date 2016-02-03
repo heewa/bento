@@ -17,7 +17,7 @@ type RunArgs struct {
 
 // RunResponse is the response from the Run cmd
 type RunResponse struct {
-	Service *service.Service
+	Service service.Info
 }
 
 // Run will start a new, temp service
@@ -44,7 +44,10 @@ func (s *Server) Run(args *RunArgs, reply *RunResponse) error {
 		return fmt.Errorf("Service with name '%s' already exists", serv.Name)
 	}
 
-	reply.Service = serv
+	if err := serv.Start(); err != nil {
+		return err
+	}
 
-	return serv.Start()
+	reply.Service = serv.Info()
+	return nil
 }
