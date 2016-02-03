@@ -27,7 +27,7 @@ var (
 
 	initCmd = kingpin.Command("init", "Start a new server").Hidden()
 
-	exitCmd = kingpin.Command("exit", "Exit the server")
+	shutdownCmd = kingpin.Command("shutdown", "Stop all services and shut the server down")
 
 	// Client Commands
 
@@ -55,13 +55,13 @@ var (
 
 	// Function table for commands
 	commandTable = map[string](func(*rpc.Client) error){
-		"init":  handleInit,
-		"exit":  handleExit,
-		"list":  handleList,
-		"start": handleStart,
-		"stop":  handleStop,
-		"run":   handleRun,
-		"tail":  handleTail,
+		"init":     handleInit,
+		"shutdown": handleShutdown,
+		"list":     handleList,
+		"start":    handleStart,
+		"stop":     handleStop,
+		"run":      handleRun,
+		"tail":     handleTail,
 	}
 )
 
@@ -206,7 +206,7 @@ func handleInit(_ *rpc.Client) error {
 	return server.Start(nothing, &nothing)
 }
 
-func handleExit(client *rpc.Client) error {
+func handleShutdown(client *rpc.Client) error {
 	var nothing bool
 	return client.Call("Server.Exit", nothing, &nothing)
 }
