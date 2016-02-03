@@ -6,6 +6,7 @@ import (
 	"net/rpc"
 	"os"
 	"os/exec"
+	"strings"
 
 	log "github.com/inconshreveable/log15"
 	"gopkg.in/alecthomas/kingpin.v2"
@@ -142,30 +143,24 @@ func handleExit(client *rpc.Client) error {
 }
 
 func handleList(client *rpc.Client) error {
-	services := []*service.Service{}
-
-	args := server.ListArgs{}
+	args := server.ListArgs{
+		Running: *listRunning,
+		Temp:    *listTemp,
+	}
 	reply := server.ListResponse{}
 	if err := client.Call("Server.List", args, &reply); err != nil {
 		return err
 	}
 
-	if *listRunning {
-		all, services := services[:], services[:0]
-		for _, serv := range all {
-			if serv.Running() {
-				services = append(services, serv)
-			}
-		}
-	}
-
-	if *listTemp {
-		all, services := services[:], services[:0]
-		for _, serv := range all {
-			if serv.Running() {
-				services = append(services, serv)
-			}
-		}
+	fmt.Printf("%d services\n", len(reply.Services))
+	for _, serv := range reply.Services {
+		fmt.Printf(
+			"  %s\n  cmd: %s %s\n  dir: %s\n  env: %v\n\n",
+			serv.Name,
+			serv.Program,
+			strings.Join(serv.Args, " "),
+			serv.Dir,
+			serv.Env)
 	}
 
 	return nil
