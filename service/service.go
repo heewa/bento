@@ -61,7 +61,7 @@ func New(name string, program string, args []string, dir string, env map[string]
 	}
 
 	return &Service{
-		Name: program,
+		Name: name,
 		cmd:  cmd,
 	}, nil
 }
