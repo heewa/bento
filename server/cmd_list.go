@@ -13,9 +13,15 @@ type ListArgs struct {
 }
 
 type ListResponse struct {
-	Services []*service.Service
+	Services []service.Info
 }
 
 func (s *Server) List(args *ListArgs, reply *ListResponse) error {
+	for _, serv := range s.listServices() {
+		if !args.Running || serv.Running() {
+			reply.Services = append(reply.Services, serv.Info())
+		}
+	}
+
 	return nil
 }

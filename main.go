@@ -223,13 +223,7 @@ func handleList(client *rpc.Client) error {
 
 	fmt.Printf("%d services\n", len(reply.Services))
 	for _, serv := range reply.Services {
-		fmt.Printf(
-			"  %s\n  cmd: %s %s\n  dir: %s\n  env: %v\n\n",
-			serv.Name,
-			serv.Program,
-			strings.Join(serv.Args, " "),
-			serv.Dir,
-			serv.Env)
+		fmt.Printf("\n  %s\n  %#v\n", serv.Name, serv)
 	}
 
 	return nil
