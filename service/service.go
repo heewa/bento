@@ -76,6 +76,10 @@ func (s *Service) Start() error {
 	s.stateLock.Lock()
 	defer s.stateLock.Unlock()
 
+	if s.running {
+		return fmt.Errorf("Service already running.")
+	}
+
 	// Clear out previous values
 	s.running = false
 	s.pid = 0

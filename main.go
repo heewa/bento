@@ -238,9 +238,16 @@ func handleList(client *rpc.Client) error {
 }
 
 func handleStart(client *rpc.Client) error {
+	args := server.StartArgs{
+		Name: *startService,
+	}
+	reply := server.StartResponse{}
 
-	fmt.Printf("starting %v\n", *startService)
+	if err := client.Call("Server.Start", args, &reply); err != nil {
+		return err
+	}
 
+	fmt.Printf("started: %#v\n", reply.Info)
 	return nil
 }
 
