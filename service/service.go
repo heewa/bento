@@ -1,6 +1,7 @@
 package service
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"os/exec"
@@ -10,6 +11,10 @@ import (
 	"time"
 
 	log "github.com/inconshreveable/log15"
+)
+
+const (
+	maxOutputSize = 100 * 1024 * 1024 // 100mb
 )
 
 // Service -
@@ -29,6 +34,11 @@ type Service struct {
 	state     *os.ProcessState
 	startTime time.Time
 	endTime   time.Time
+
+	// Output is locked by outLock
+	outLock sync.RWMutex
+	stdout  []string
+	stderr  []string
 }
 
 // New creates a new Service
@@ -102,12 +112,17 @@ func (s *Service) Start() error {
 	s.stateLock.Lock()
 	defer s.stateLock.Unlock()
 
+	s.outLock.Lock()
+	defer s.outLock.Unlock()
+
 	// Clear out previous values, even ones we set on start, in case there's
 	// an error.
 	s.process = nil
 	s.state = nil
 	s.startTime = time.Time{}
 	s.endTime = time.Time{}
+	s.stdout = nil
+	s.stderr = nil
 
 	programPath, err := exec.LookPath(s.Program)
 	if err != nil {
@@ -123,6 +138,19 @@ func (s *Service) Start() error {
 	cmd.Dir = s.Dir
 	cmd.Env = envItems
 
+	// Get line-scanners for stdout/err
+	pipe, err := cmd.StdoutPipe()
+	if err != nil {
+		return err
+	}
+	stdout := bufio.NewScanner(pipe)
+
+	pipe, err = cmd.StderrPipe()
+	if err != nil {
+		return err
+	}
+	stderr := bufio.NewScanner(pipe)
+
 	if err := cmd.Start(); err != nil {
 		return err
 	}
@@ -131,6 +159,17 @@ func (s *Service) Start() error {
 	s.process = cmd.Process
 
 	go func() {
+		// Read from stdout/err & throw in a tail-array. Completely exhaust
+		// both before waiting for the cmd to exit, cuz Wait will close the
+		// pipes before we can read everything from them. Read each one
+		// separately in a goroutine so they don't block each other
+		done := make(chan interface{})
+		go watchOutput(stdout, &s.stdout, &s.outLock, done)
+		go watchOutput(stderr, &s.stderr, &s.outLock, done)
+		<-done
+		<-done
+
+		// Wait for exit
 		err := cmd.Wait()
 		log.Info("Service exited", "name", s.Name, "program", s.Program, "err", err)
 
@@ -199,4 +238,27 @@ func (s *Service) signal(sig os.Signal) error {
 	}
 
 	return nil
+}
+
+func watchOutput(out *bufio.Scanner, tail *[]string, lock *sync.RWMutex, done chan<- interface{}) {
+	size := 0
+
+	for out.Scan() {
+		lock.Lock()
+
+		line := out.Text()
+		size += len(line)
+		*tail = append(*tail, line)
+
+		// Cut down by total size, cuz output could be a binary stream, and we
+		// care about size more than # lines anyway.
+		for len(*tail) > 1 && size > maxOutputSize {
+			size -= len((*tail)[0])
+			*tail = (*tail)[1:]
+		}
+
+		lock.Unlock()
+	}
+
+	done <- struct{}{}
 }
