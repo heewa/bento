@@ -36,6 +36,8 @@ type Info struct {
 	Running   bool
 	Pid       int
 	Succeeded bool
+	startTime time.Time
+	endTime   time.Time
 }
 
 // New creates a new Service
@@ -96,9 +98,12 @@ func (s *Service) Start() error {
 	s.stateLock.Lock()
 	defer s.stateLock.Unlock()
 
-	// Clear out previous values
+	// Clear out previous values, even ones we set on start, in case there's
+	// an error.
 	s.process = nil
 	s.state = nil
+	s.startTime = time.Time{}
+	s.endTime = time.Time{}
 
 	programPath, err := exec.LookPath(s.Program)
 	if err != nil {
@@ -117,6 +122,7 @@ func (s *Service) Start() error {
 	if err := cmd.Start(); err != nil {
 		return err
 	}
+	s.startTime = time.Now()
 	s.exitChan = make(chan interface{})
 	s.process = cmd.Process
 
@@ -127,8 +133,11 @@ func (s *Service) Start() error {
 		s.stateLock.Lock()
 		defer s.stateLock.Unlock()
 
-		close(s.exitChan)
+		s.endTime = time.Now()
 		s.state = cmd.ProcessState
+
+		// Close exit chan last cuz it signals other goroutines
+		close(s.exitChan)
 	}()
 
 	return nil
