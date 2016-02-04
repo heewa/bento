@@ -45,7 +45,7 @@ func (s *Server) Init(_ bool, _ *bool) error {
 		return err
 	}
 
-	log.Debug("Listening on fifo", "address", s.fifoAddr)
+	log.Info("Listening on fifo", "address", s.fifoAddr)
 	listener, err := net.ListenUnix("unix", s.fifoAddr)
 	if err != nil {
 		return err
@@ -94,7 +94,7 @@ func (s *Server) Init(_ bool, _ *bool) error {
 		}
 	}
 
-	log.Debug("Done listening")
+	log.Info("Shut down")
 
 	return nil
 }

@@ -3,6 +3,8 @@ package server
 import (
 	"fmt"
 
+	log "github.com/inconshreveable/log15"
+
 	"github.com/heewa/servicetray/service"
 )
 
@@ -23,6 +25,7 @@ func (s *Server) Start(args *StartArgs, reply *StartResponse) error {
 		return fmt.Errorf("Service '%s' not found.", args.Name)
 	}
 
+	log.Info("Starting service", "service", serv.Name)
 	if err := serv.Start(); err != nil {
 		return err
 	}

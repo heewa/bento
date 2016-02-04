@@ -3,6 +3,8 @@ package server
 import (
 	"fmt"
 
+	log "github.com/inconshreveable/log15"
+
 	"github.com/heewa/servicetray/service"
 )
 
@@ -44,6 +46,7 @@ func (s *Server) Run(args *RunArgs, reply *RunResponse) error {
 		return fmt.Errorf("Service with name '%s' already exists", serv.Name)
 	}
 
+	log.Info("Running service", "service", serv.Name)
 	if err := serv.Start(); err != nil {
 		return err
 	}
