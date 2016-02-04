@@ -241,9 +241,8 @@ func handleList(client *rpc.Client) error {
 		return err
 	}
 
-	fmt.Printf("%d services\n", len(reply.Services))
 	for _, serv := range reply.Services {
-		fmt.Printf("\n  %s\n  %#v\n", serv.Name, serv)
+		fmt.Println(serv)
 	}
 
 	return nil
@@ -263,7 +262,7 @@ func handleRun(client *rpc.Client) error {
 		return err
 	}
 
-	fmt.Printf("running %#v\n", reply.Service)
+	fmt.Println(reply.Service)
 	return nil
 }
 
@@ -277,7 +276,7 @@ func handleStart(client *rpc.Client) error {
 		return err
 	}
 
-	fmt.Printf("started: %#v\n", reply.Info)
+	fmt.Println(reply.Info)
 	return nil
 }
 
@@ -291,7 +290,7 @@ func handleStop(client *rpc.Client) error {
 		return err
 	}
 
-	fmt.Printf("stopped: %#v\n", reply.Info)
+	fmt.Println(reply.Info)
 	return nil
 }
 
@@ -309,7 +308,7 @@ func handleInfo(client *rpc.Client) error {
 		return err
 	}
 
-	fmt.Printf("%#v\n", reply.Info)
+	fmt.Printf("%s\n", reply.Info)
 	return nil
 }
 

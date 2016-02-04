@@ -27,15 +27,6 @@ type Service struct {
 	stateLock sync.RWMutex
 	process   *os.Process
 	state     *os.ProcessState
-}
-
-// Info holds info about a service
-type Info struct {
-	Service
-
-	Running   bool
-	Pid       int
-	Succeeded bool
 	startTime time.Time
 	endTime   time.Time
 }
@@ -68,11 +59,13 @@ func New(name string, program string, args []string, dir string, env map[string]
 // Info gets info about the service
 func (s *Service) Info() Info {
 	running := false
+	runtime := s.endTime.Sub(s.startTime)
 	if s.exitChan != nil {
 		select {
 		case <-s.exitChan:
 		default:
 			running = true
+			runtime = time.Since(s.startTime)
 		}
 	}
 
@@ -80,6 +73,10 @@ func (s *Service) Info() Info {
 		Service: *s,
 		Running: running,
 		Pid:     s.process.Pid,
+
+		StartTime: s.startTime,
+		EndTime:   s.endTime,
+		Runtime:   runtime,
 	}
 
 	if !running && s.state != nil {
