@@ -28,7 +28,7 @@ func (s *Server) Run(args *RunArgs, reply *RunResponse) error {
 		// Name it after the program, but avoid collisions by checking
 		args.Name = args.Program
 		for i := 1; i <= 50 && s.getService(args.Name) != nil; i++ {
-			args.Name = fmt.Sprintf("%s (%d)", args.Program, i)
+			args.Name = fmt.Sprintf("%s-%d", args.Program, i)
 		}
 	}
 
