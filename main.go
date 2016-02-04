@@ -56,6 +56,9 @@ var (
 	tailStdErr  = tailCmd.Flag("stderr", "Tail just stderr").Bool()
 	tailService = tailCmd.Arg("service", "Service to tail").Required().String()
 
+	pidCmd     = kingpin.Command("pid", "Output the process id for a running service")
+	pidService = pidCmd.Arg("service", "Service to get pid of").Required().String()
+
 	// Function table for commands
 	commandTable = map[string](func(*rpc.Client) error){
 		"init":     handleInit,
@@ -67,6 +70,7 @@ var (
 		"start": handleStart,
 		"stop":  handleStop,
 		"tail":  handleTail,
+		"pid":   handlePid,
 	}
 )
 
@@ -287,19 +291,20 @@ func handleStop(client *rpc.Client) error {
 	return nil
 }
 
-	}
-	reply := server.RunResponse{}
+func handleTail(client *rpc.Client) error {
+	return fmt.Errorf("Functionality not implemented")
+}
 
-	if err := client.Call("Server.Run", args, &reply); err != nil {
+func handlePid(client *rpc.Client) error {
+	args := server.InfoArgs{
+		Name: *pidService,
+	}
+	reply := server.InfoResponse{}
+
+	if err := client.Call("Server.Info", args, &reply); err != nil {
 		return err
 	}
 
-	fmt.Printf("running %#v\n", reply.Service)
-	return nil
-}
-
-func handleTail(client *rpc.Client) error {
-	fmt.Printf("tail stdout:%v stderr:%v %v\n", !*tailStdErr || *tailStdOut, !*tailStdOut || *tailStdErr, *tailService)
-
+	fmt.Println(reply.Info.Pid)
 	return nil
 }
