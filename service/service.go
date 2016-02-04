@@ -6,6 +6,8 @@ import (
 	"os/exec"
 	"os/user"
 	"sync"
+	"syscall"
+	"time"
 
 	log "github.com/inconshreveable/log15"
 )
@@ -18,10 +20,12 @@ type Service struct {
 	Dir     string
 	Env     map[string]string
 
+	// Closed when process exits, no need for lock to use.
+	exitChan chan interface{}
+
 	// All these fields are locked by stateLock
 	stateLock sync.RWMutex
-	running   bool
-	pid       int
+	process   *os.Process
 	state     *os.ProcessState
 }
 
@@ -44,27 +48,39 @@ func New(name string, program string, args []string, dir string, env map[string]
 		dir = usr.HomeDir
 	}
 
+	// Start off with an existing, but closed exit chan
+	exitChan := make(chan interface{})
+	close(exitChan)
+
 	return &Service{
 		Name:    name,
 		Program: program,
 		Args:    args,
 		Dir:     dir,
 		Env:     env,
+
+		exitChan: exitChan,
 	}, nil
 }
 
 // Info gets info about the service
 func (s *Service) Info() Info {
-	s.stateLock.RLock()
-	defer s.stateLock.RUnlock()
+	running := false
+	if s.exitChan != nil {
+		select {
+		case <-s.exitChan:
+		default:
+			running = true
+		}
+	}
 
 	info := Info{
 		Service: *s,
-		Running: s.running,
-		Pid:     s.pid,
+		Running: running,
+		Pid:     s.process.Pid,
 	}
 
-	if !s.running && s.state != nil {
+	if !running && s.state != nil {
 		info.Succeeded = s.state.Success()
 	}
 
@@ -73,16 +89,15 @@ func (s *Service) Info() Info {
 
 // Start starts running the service
 func (s *Service) Start() error {
-	s.stateLock.Lock()
-	defer s.stateLock.Unlock()
-
-	if s.running {
+	if s.Running() {
 		return fmt.Errorf("Service already running.")
 	}
 
+	s.stateLock.Lock()
+	defer s.stateLock.Unlock()
+
 	// Clear out previous values
-	s.running = false
-	s.pid = 0
+	s.process = nil
 	s.state = nil
 
 	programPath, err := exec.LookPath(s.Program)
@@ -102,17 +117,17 @@ func (s *Service) Start() error {
 	if err := cmd.Start(); err != nil {
 		return err
 	}
-	s.running = true
-	s.pid = cmd.Process.Pid
+	s.exitChan = make(chan interface{})
+	s.process = cmd.Process
 
 	go func() {
 		err := cmd.Wait()
-		log.Debug("Service exited", "name", s.Name, "program", s.Program, "err", err)
+		log.Info("Service exited", "name", s.Name, "program", s.Program, "err", err)
 
 		s.stateLock.Lock()
 		defer s.stateLock.Unlock()
 
-		s.running = false
+		close(s.exitChan)
 		s.state = cmd.ProcessState
 	}()
 
@@ -121,21 +136,48 @@ func (s *Service) Start() error {
 
 // Stop stops running the service
 func (s *Service) Stop() error {
-	// TODO: Try to interrupt it first
-	/*
-		if err := s.cmd.Process.Signal(exec.Interrupt); err != nil {
+	// Try a sequence increasingly urgent signals
+	signals := []os.Signal{os.Interrupt, syscall.SIGTERM, os.Kill}
+
+	for _, sig := range signals {
+		log.Debug("Sending service's proc signal", "service", s.Name, "signal", sig)
+		if err := s.signal(sig); err != nil {
 			return err
 		}
-	*/
 
-	//return s.cmd.Process.Kill()
-	return nil
+		// Wait a bit for process to die
+		select {
+		case <-s.exitChan:
+			return nil
+		case <-time.After(3 * time.Second):
+		}
+	}
+
+	return fmt.Errorf("Failed to stop service")
 }
 
 // Running returns true if service is currently running
 func (s *Service) Running() bool {
+	select {
+	case <-s.exitChan:
+		return false
+	default:
+	}
+	return true
+}
+
+func (s *Service) signal(sig os.Signal) error {
 	s.stateLock.RLock()
 	defer s.stateLock.RUnlock()
 
-	return s.running
+	if !s.Running() {
+		return fmt.Errorf("Service isn't running")
+	}
+
+	// Try to interrupt it first
+	if err := s.process.Signal(sig); err != nil {
+		return fmt.Errorf("Failed to signal process with %v: %v", sig, err)
+	}
+
+	return nil
 }

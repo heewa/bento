@@ -252,8 +252,16 @@ func handleStart(client *rpc.Client) error {
 }
 
 func handleStop(client *rpc.Client) error {
-	fmt.Printf("stopping %v\n", *stopService)
+	args := server.StopArgs{
+		Name: *stopService,
+	}
+	reply := server.StopResponse{}
 
+	if err := client.Call("Server.Stop", args, &reply); err != nil {
+		return err
+	}
+
+	fmt.Printf("stopped: %#v\n", reply.Info)
 	return nil
 }
 
