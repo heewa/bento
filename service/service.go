@@ -89,7 +89,7 @@ func (s *Service) Info() Info {
 	info := Info{
 		Service: *s,
 		Running: running,
-		Pid:     s.process.Pid,
+		Pid:     s.Pid(),
 
 		StartTime: s.startTime,
 		EndTime:   s.endTime,
@@ -222,6 +222,18 @@ func (s *Service) Running() bool {
 	default:
 	}
 	return true
+}
+
+func (s *Service) Pid() int {
+	s.stateLock.RLock()
+	defer s.stateLock.RUnlock()
+
+	if s.process != nil {
+		return s.process.Pid
+	} else if s.state != nil {
+		return s.state.Pid()
+	}
+	return 0
 }
 
 func (s *Service) signal(sig os.Signal) error {
