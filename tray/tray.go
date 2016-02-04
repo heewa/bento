@@ -13,10 +13,12 @@ var (
 
 // Init starts running the system tray. It's required before using this package
 func Init() {
-	ready := make(chan interface{})
 
 	initOnce.Do(func() {
 		log.Info("Starting system tray")
+
+		ready := make(chan interface{})
+
 		go systray.Run(func() {
 			// TODO: icon instead of title
 			systray.SetTitle("ST")
@@ -25,9 +27,9 @@ func Init() {
 			log.Debug("Done setting up tray")
 			close(ready)
 		})
-	})
 
-	<-ready
+		<-ready
+	})
 }
 
 // Quit shuts down the tray and cleans up
