@@ -19,17 +19,17 @@ type StartResponse struct {
 }
 
 // Start runs a service, if it's stopped
-func (s *Server) Start(args *StartArgs, reply *StartResponse) error {
+func (s *Server) Start(args StartArgs, reply *StartResponse) error {
 	serv := s.getService(args.Name)
 	if serv == nil {
 		return fmt.Errorf("Service '%s' not found.", args.Name)
 	}
 
 	log.Info("Starting service", "service", serv.Name)
-	if err := serv.Start(); err != nil {
-		return err
-	}
+	err := serv.Start()
 
+	// Set info regardless of error
 	reply.Info = serv.Info()
-	return nil
+
+	return err
 }
