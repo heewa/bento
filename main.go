@@ -32,6 +32,7 @@ var (
 	listTemp    = listCmd.Arg("temp", "List only temp services").Bool()
 
 	runCmd  = kingpin.Command("run", "Run command as a new service")
+	runWait = runCmd.Flag("wait", "Wait for it exit").Bool()
 	runName = runCmd.Flag("name", "Set a name for the service").String()
 	runDir  = runCmd.Flag("dir", "Directory to run the service from").ExistingDir()
 	runEnv  = runCmd.Flag("env", "Env vars to pass on to service").StringMap()
@@ -157,8 +158,17 @@ func handleList(client *client.Client) error {
 
 func handleRun(client *client.Client) error {
 	info, err := client.Run(*runName, *runProg, *runArgs, *runDir, *runEnv)
-	if err == nil {
+	if err == nil && !*runWait {
 		fmt.Println(info)
+	} else if err == nil {
+		info, err = client.Wait(info.Name)
+		if err == nil {
+			fmt.Println(info)
+			if info.Succeeded {
+				os.Exit(0)
+			}
+			os.Exit(1)
+		}
 	}
 	return err
 }
