@@ -9,7 +9,11 @@ import (
 // Exit casues server to exit
 func (s *Server) Exit(_ bool, _ *bool) error {
 	log.Info("Exiting server")
-	close(s.stop)
+	select {
+	case s.stop <- struct{}{}:
+	default:
+		// Someone already asked to stop, so it's fine
+	}
 
 	log.Debug("Connecting to server to break out of listen loop")
 	conn, err := net.DialUnix("unix", nil, s.fifoAddr)

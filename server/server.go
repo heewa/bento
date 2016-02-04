@@ -32,10 +32,15 @@ func New(fifoPath string) (*Server, error) {
 		return nil, err
 	}
 
+	// Make the stop channel with a buffer because the goroutine that reads
+	// from it might be blocked on listening for RPC connections, which the
+	// same entity that's stopping will need to break it out of
+	stop := make(chan interface{}, 1)
+
 	return &Server{
 		fifoAddr: addr,
 		services: make(map[string]*service.Service),
-		stop:     make(chan interface{}),
+		stop:     stop,
 	}, nil
 }
 
