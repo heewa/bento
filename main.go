@@ -30,24 +30,26 @@ var (
 
 	shutdownCmd = kingpin.Command("shutdown", "Stop all services and shut the server down")
 
-	// Client Commands
+	// Commands on nothing
 
 	listCmd     = kingpin.Command("list", "List services")
 	listRunning = listCmd.Arg("running", "List only running services").Bool()
 	listTemp    = listCmd.Arg("temp", "List only temp services").Bool()
+
+	runCmd  = kingpin.Command("run", "Run command as a new service")
+	runName = runCmd.Flag("name", "Set a name for the service").String()
+	runDir  = runCmd.Flag("dir", "Directory to run the service from").ExistingDir()
+	runEnv  = runCmd.Flag("env", "Env vars to pass on to service").StringMap()
+	runProg = runCmd.Arg("program", "Program to run").Required().String()
+	runArgs = runCmd.Arg("args", "Args to pass to program, with -- prefix to prevent args from being processed here").Strings()
+
+	// Service commands
 
 	startCmd     = kingpin.Command("start", "Start an existing service")
 	startService = startCmd.Arg("service", "Service to start").Required().String()
 
 	stopCmd     = kingpin.Command("stop", "Stop a running service")
 	stopService = stopCmd.Arg("service", "Service to stop").Required().String()
-
-	runCmd  = kingpin.Command("run", "Run a service, but don't save it when it exits")
-	runName = runCmd.Flag("name", "Set a name for the temporary service").String()
-	runDir  = runCmd.Flag("dir", "Directory to run the service from").ExistingDir()
-	runEnv  = runCmd.Flag("env", "Env vars to pass on to service").StringMap()
-	runProg = runCmd.Arg("program", "Program to run").Required().String()
-	runArgs = runCmd.Arg("args", "Args to pass to program, with -- prefix to prevent args from being processed here").Strings()
 
 	tailCmd     = kingpin.Command("tail", "Tail stdout and/or stderr of a service")
 	tailStdOut  = tailCmd.Flag("stdout", "Tail just stdout").Bool()
@@ -58,11 +60,13 @@ var (
 	commandTable = map[string](func(*rpc.Client) error){
 		"init":     handleInit,
 		"shutdown": handleShutdown,
-		"list":     handleList,
-		"start":    handleStart,
-		"stop":     handleStop,
-		"run":      handleRun,
-		"tail":     handleTail,
+
+		"list": handleList,
+		"run":  handleRun,
+
+		"start": handleStart,
+		"stop":  handleStop,
+		"tail":  handleTail,
 	}
 )
 
@@ -237,6 +241,24 @@ func handleList(client *rpc.Client) error {
 	return nil
 }
 
+func handleRun(client *rpc.Client) error {
+	args := server.RunArgs{
+		Name:    *runName,
+		Program: *runProg,
+		Args:    *runArgs,
+		Dir:     *runDir,
+		Env:     *runEnv,
+	}
+	reply := server.RunResponse{}
+
+	if err := client.Call("Server.Run", args, &reply); err != nil {
+		return err
+	}
+
+	fmt.Printf("running %#v\n", reply.Service)
+	return nil
+}
+
 func handleStart(client *rpc.Client) error {
 	args := server.StartArgs{
 		Name: *startService,
@@ -265,13 +287,6 @@ func handleStop(client *rpc.Client) error {
 	return nil
 }
 
-func handleRun(client *rpc.Client) error {
-	args := server.RunArgs{
-		Name:    *runName,
-		Program: *runProg,
-		Args:    *runArgs,
-		Dir:     *runDir,
-		Env:     *runEnv,
 	}
 	reply := server.RunResponse{}
 
