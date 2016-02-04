@@ -75,15 +75,16 @@ func New(name string, program string, args []string, dir string, env map[string]
 
 // Info gets info about the service
 func (s *Service) Info() Info {
-	running := false
-	runtime := s.endTime.Sub(s.startTime)
-	if s.exitChan != nil {
-		select {
-		case <-s.exitChan:
-		default:
-			running = true
-			runtime = time.Since(s.startTime)
-		}
+	s.stateLock.RLock()
+	defer s.stateLock.RUnlock()
+
+	running := s.Running()
+
+	var runtime time.Duration
+	if running {
+		runtime = time.Since(s.startTime)
+	} else {
+		runtime = s.endTime.Sub(s.startTime)
 	}
 
 	info := Info{
