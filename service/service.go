@@ -36,9 +36,11 @@ type Service struct {
 	endTime   time.Time
 
 	// Output is locked by outLock
-	outLock sync.RWMutex
-	stdout  []string
-	stderr  []string
+	outLock      sync.RWMutex
+	stdout       []string
+	stdoutShifts int
+	stderr       []string
+	stderrShifts int
 }
 
 // New creates a new Service
@@ -123,7 +125,9 @@ func (s *Service) Start() error {
 	s.startTime = time.Time{}
 	s.endTime = time.Time{}
 	s.stdout = nil
+	s.stdoutShifts = 0
 	s.stderr = nil
+	s.stderrShifts = 0
 
 	programPath, err := exec.LookPath(s.Program)
 	if err != nil {
@@ -165,8 +169,8 @@ func (s *Service) Start() error {
 		// pipes before we can read everything from them. Read each one
 		// separately in a goroutine so they don't block each other
 		done := make(chan interface{})
-		go watchOutput(stdout, &s.stdout, &s.outLock, done)
-		go watchOutput(stderr, &s.stderr, &s.outLock, done)
+		go watchOutput(stdout, &s.stdout, &s.stdoutShifts, &s.outLock, done)
+		go watchOutput(stderr, &s.stderr, &s.stderrShifts, &s.outLock, done)
 		<-done
 		<-done
 
@@ -237,6 +241,26 @@ func (s *Service) Pid() int {
 	return 0
 }
 
+// Stdout gets lines from stdout since a line index
+func (s *Service) Stdout(pid, since int) (lines []string, newSince int, newPid int) {
+	s.stateLock.RLock()
+	defer s.stateLock.RUnlock()
+	s.outLock.RLock()
+	defer s.outLock.RUnlock()
+
+	return getOutput(pid, since, s.Pid(), s.stdoutShifts, s.stdout)
+}
+
+// Stderr gets lines from stderr since a line index
+func (s *Service) Stderr(pid, since int) (lines []string, newSince int, newPid int) {
+	s.stateLock.RLock()
+	defer s.stateLock.RUnlock()
+	s.outLock.RLock()
+	defer s.outLock.RUnlock()
+
+	return getOutput(pid, since, s.Pid(), s.stderrShifts, s.stderr)
+}
+
 func (s *Service) signal(sig os.Signal) error {
 	s.stateLock.RLock()
 	defer s.stateLock.RUnlock()
@@ -253,7 +277,7 @@ func (s *Service) signal(sig os.Signal) error {
 	return nil
 }
 
-func watchOutput(out *bufio.Scanner, tail *[]string, lock *sync.RWMutex, done chan<- interface{}) {
+func watchOutput(out *bufio.Scanner, tail *[]string, shifts *int, lock *sync.RWMutex, done chan<- interface{}) {
 	size := 0
 
 	for out.Scan() {
@@ -268,10 +292,37 @@ func watchOutput(out *bufio.Scanner, tail *[]string, lock *sync.RWMutex, done ch
 		for len(*tail) > 1 && size > maxOutputSize {
 			size -= len((*tail)[0])
 			*tail = (*tail)[1:]
+			*shifts += 1
 		}
 
 		lock.Unlock()
 	}
 
 	done <- struct{}{}
+}
+
+func getOutput(pid, since, currentPid, shifts int, outLines []string) ([]string, int, int) {
+	// If pid doesn't match, there's been a restart since the last call, so
+	// reset since
+	if pid != currentPid {
+		since = 0
+	}
+
+	// Look up where in the current buffer they are
+	index := since - shifts
+	if index < 0 {
+		// They've fallen behind, just start at the earliest
+		index = 0
+	}
+
+	numLines := len(outLines) - index
+	lines := []string{}
+	if numLines > 0 {
+		lines = append([]string{}, outLines[index:]...)
+	} else {
+		// They're caught up
+		numLines = 0
+	}
+
+	return lines, index + shifts + numLines, currentPid
 }

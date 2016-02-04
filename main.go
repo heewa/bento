@@ -47,10 +47,12 @@ var (
 	stopCmd     = kingpin.Command("stop", "Stop a running service")
 	stopService = stopCmd.Arg("service", "Service to stop").Required().String()
 
-	tailCmd     = kingpin.Command("tail", "Tail stdout and/or stderr of a service")
-	tailStdOut  = tailCmd.Flag("stdout", "Tail just stdout").Bool()
-	tailStdErr  = tailCmd.Flag("stderr", "Tail just stderr").Bool()
-	tailService = tailCmd.Arg("service", "Service to tail").Required().String()
+	tailCmd            = kingpin.Command("tail", "Tail stdout and/or stderr of a service")
+	tailFollow         = tailCmd.Flag("follow", "Continuously output new lines from service").Short('f').Bool()
+	tailFollowRestarts = tailCmd.Flag("follow-restarts", "Continuously output new lines from service, even after it exits and starts again").Short('F').Bool()
+	tailStdout         = tailCmd.Flag("stdout", "Tail just stdout").Bool()
+	tailStderr         = tailCmd.Flag("stderr", "Tail just stderr").Bool()
+	tailService        = tailCmd.Arg("service", "Service to tail").Required().String()
 
 	infoCmd     = kingpin.Command("info", "Output info on a service")
 	infoService = infoCmd.Arg("service", "Service to get info about").Required().String()
@@ -190,7 +192,37 @@ func handleStop(client *client.Client) error {
 }
 
 func handleTail(client *client.Client) error {
-	return fmt.Errorf("Functionality not implemented")
+	stdoutChan, stderrChan, errChan := client.Tail(
+		*tailService,
+		*tailStdout || !*tailStderr,
+		*tailStderr || !*tailStdout,
+		*tailFollow,
+		*tailFollowRestarts)
+
+	// Keep outputting until done
+	done := make(chan interface{})
+	go func() {
+		for line := range stdoutChan {
+			fmt.Println(line)
+		}
+		done <- struct{}{}
+	}()
+	go func() {
+		for line := range stderrChan {
+			fmt.Fprintln(os.Stderr, line)
+		}
+		done <- struct{}{}
+	}()
+
+	// Wait for both to finish, which they will do on err also
+	<-done
+	<-done
+
+	// Check err
+	if err, ok := <-errChan; ok && err != nil {
+		return err
+	}
+	return nil
 }
 
 func handleInfo(client *client.Client) error {
