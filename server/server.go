@@ -8,8 +8,10 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/heewa/servicetray/service"
 	log "github.com/inconshreveable/log15"
+
+	"github.com/heewa/servicetray/service"
+	"github.com/heewa/servicetray/tray"
 )
 
 // Server is the backend that manages services
@@ -24,7 +26,7 @@ type Server struct {
 
 // New creates a new Server
 func New(fifoPath string) (*Server, error) {
-	// Resolve the net address
+	// Catch obvious address errors early
 	addr, err := net.ResolveUnixAddr("unix", fifoPath)
 	if err != nil {
 		return nil, err
@@ -37,8 +39,7 @@ func New(fifoPath string) (*Server, error) {
 	}, nil
 }
 
-// Start starts running the server and listening for RPC calls, blcoking until
-// exit.
+// Init runs the server, listening for RPC calls, blocking until exit
 func (s *Server) Init(_ bool, _ *bool) error {
 	log.Debug("Registering RPC interface")
 	if err := rpc.Register(s); err != nil {
@@ -57,6 +58,10 @@ func (s *Server) Init(_ bool, _ *bool) error {
 			log.Info("Closed listener")
 		}
 	}()
+
+	// At this point, we've had chances to error out, and we're about to spin
+	// up background goroutines to handle RPC. So finally start the UI.
+	tray.Init()
 
 	// Handle interrupt & kill signal, to try to clean up
 	go func() {
@@ -94,7 +99,9 @@ func (s *Server) Init(_ bool, _ *bool) error {
 		}
 	}
 
-	log.Info("Shut down")
+	log.Info("Shut down server, stopping UI")
+	tray.Quit()
+	log.Info("All done")
 
 	return nil
 }
