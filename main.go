@@ -136,12 +136,12 @@ func main() {
 }
 
 func handleInit() error {
-	server, err := server.New(*fifo)
+	server, serviceUpdates, err := server.New(*fifo)
 	if err != nil {
 		return err
 	}
 
-	tray.Init(server)
+	tray.Init(server, serviceUpdates)
 	defer tray.Quit()
 
 	var nothing bool

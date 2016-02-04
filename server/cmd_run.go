@@ -46,8 +46,14 @@ func (s *Server) Run(args *RunArgs, reply *RunResponse) error {
 		return fmt.Errorf("Service with name '%s' already exists", serv.Name)
 	}
 
+	// Update after creating, but before changing its state
+	select {
+	case s.serviceUpdates <- serv.Info():
+	default:
+	}
+
 	log.Info("Running service", "service", serv.Name)
-	if err := serv.Start(); err != nil {
+	if err := serv.Start(s.serviceUpdates); err != nil {
 		return err
 	}
 

@@ -107,10 +107,18 @@ func (s *Service) Info() Info {
 }
 
 // Start starts running the service
-func (s *Service) Start() error {
+func (s *Service) Start(updates chan<- Info) error {
 	if s.Running() {
 		return fmt.Errorf("Service already running.")
 	}
+
+	// Update right after starting, but before we can race with the end-watcher
+	defer func() {
+		select {
+		case updates <- s.Info():
+		default:
+		}
+	}()
 
 	s.stateLock.Lock()
 	defer s.stateLock.Unlock()
@@ -177,6 +185,14 @@ func (s *Service) Start() error {
 		// Wait for exit
 		err := cmd.Wait()
 		log.Info("Service exited", "name", s.Name, "program", s.Program, "err", err)
+
+		// Update after we let go of lock
+		defer func() {
+			select {
+			case updates <- s.Info():
+			default:
+			}
+		}()
 
 		s.stateLock.Lock()
 		defer s.stateLock.Unlock()

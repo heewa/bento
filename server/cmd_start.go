@@ -26,7 +26,7 @@ func (s *Server) Start(args StartArgs, reply *StartResponse) error {
 	}
 
 	log.Info("Starting service", "service", serv.Name)
-	err := serv.Start()
+	err := serv.Start(s.serviceUpdates)
 
 	// Set info regardless of error
 	reply.Info = serv.Info()

@@ -20,15 +20,17 @@ type Server struct {
 	services     map[string]*service.Service
 	servicesLock sync.RWMutex
 
+	serviceUpdates chan service.Info
+
 	stop chan interface{}
 }
 
 // New creates a new Server
-func New(fifoPath string) (*Server, error) {
+func New(fifoPath string) (*Server, <-chan service.Info, error) {
 	// Catch obvious address errors early
 	addr, err := net.ResolveUnixAddr("unix", fifoPath)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Make the stop channel with a buffer because the goroutine that reads
@@ -36,11 +38,15 @@ func New(fifoPath string) (*Server, error) {
 	// same entity that's stopping will need to break it out of
 	stop := make(chan interface{}, 1)
 
+	// Communicate with UI about service changes through a channel
+	serviceUpdates := make(chan service.Info, 100)
+
 	return &Server{
-		fifoAddr: addr,
-		services: make(map[string]*service.Service),
-		stop:     stop,
-	}, nil
+		fifoAddr:       addr,
+		services:       make(map[string]*service.Service),
+		serviceUpdates: serviceUpdates,
+		stop:           stop,
+	}, serviceUpdates, nil
 }
 
 // Init runs the server, listening for RPC calls, blocking until exit
