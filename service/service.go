@@ -34,11 +34,18 @@ type Service struct {
 // New creates a new Service
 func New(name string, program string, args []string, dir string, env map[string]string) (*Service, error) {
 	if dir == "" {
-		usr, err := user.Current()
-		if err != nil {
-			return nil, err
+		// Try the current dir
+		if curDir, err := os.Getwd(); err == nil {
+			dir = curDir
+		} else {
+			// Try the user's home dir
+			if usr, err := user.Current(); err == nil {
+				dir = usr.HomeDir
+			} else {
+				// I guess root?
+				dir = "/"
+			}
 		}
-		dir = usr.HomeDir
 	}
 
 	// Start off with an existing, but closed exit chan
