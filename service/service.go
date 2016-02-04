@@ -162,6 +162,12 @@ func (s *Service) Stop() error {
 	return fmt.Errorf("Failed to stop service")
 }
 
+// Wait blocks until it stops running
+func (s *Service) Wait() error {
+	<-s.exitChan
+	return nil
+}
+
 // Running returns true if service is currently running
 func (s *Service) Running() bool {
 	select {

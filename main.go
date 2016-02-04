@@ -59,6 +59,9 @@ var (
 	infoCmd     = kingpin.Command("info", "Output info on a service")
 	infoService = infoCmd.Arg("service", "Service to get info about").Required().String()
 
+	waitCmd     = kingpin.Command("wait", "Waits for a service to stop and exits with 0 if succeeded, != 0 otherwise")
+	waitService = waitCmd.Arg("service", "Service to wait for").Required().String()
+
 	pidCmd     = kingpin.Command("pid", "Output the process id for a running service")
 	pidService = pidCmd.Arg("service", "Service to get pid of").Required().String()
 
@@ -74,6 +77,7 @@ var (
 		"stop":  handleStop,
 		"tail":  handleTail,
 		"info":  handleInfo,
+		"wait":  handleWait,
 		"pid":   handlePid,
 	}
 )
@@ -309,6 +313,24 @@ func handleInfo(client *rpc.Client) error {
 	}
 
 	fmt.Printf("%s\n", reply.Info)
+	return nil
+}
+
+func handleWait(client *rpc.Client) error {
+	args := server.WaitArgs{
+		Name: *waitService,
+	}
+	reply := server.WaitResponse{}
+
+	if err := client.Call("Server.Wait", args, &reply); err != nil {
+		return err
+	}
+
+	if reply.Info.Succeeded {
+		os.Exit(0)
+	}
+	os.Exit(1)
+
 	return nil
 }
 
