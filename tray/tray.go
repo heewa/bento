@@ -5,17 +5,23 @@ import (
 
 	"github.com/getlantern/systray"
 	log "github.com/inconshreveable/log15"
+
+	"github.com/heewa/servicetray/server"
 )
 
 var (
 	initOnce sync.Once
+
+	srvr *server.Server
 )
 
-// Init starts running the system tray. It's required before using this package
-func Init() {
 
+// Init starts running the system tray. It's required before using this package
+func Init(serv *server.Server) {
 	initOnce.Do(func() {
 		log.Info("Starting system tray")
+
+		srvr = serv
 
 		ready := make(chan interface{})
 
@@ -35,4 +41,5 @@ func Init() {
 // Quit shuts down the tray and cleans up
 func Quit() {
 	systray.Quit()
+	srvr = nil
 }

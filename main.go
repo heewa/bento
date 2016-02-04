@@ -10,6 +10,7 @@ import (
 
 	"github.com/heewa/servicetray/client"
 	"github.com/heewa/servicetray/server"
+	"github.com/heewa/servicetray/tray"
 )
 
 var (
@@ -139,6 +140,9 @@ func handleInit() error {
 	if err != nil {
 		return err
 	}
+
+	tray.Init(server)
+	defer tray.Quit()
 
 	var nothing bool
 	return server.Init(nothing, &nothing)

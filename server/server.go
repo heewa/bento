@@ -11,7 +11,6 @@ import (
 	log "github.com/inconshreveable/log15"
 
 	"github.com/heewa/servicetray/service"
-	"github.com/heewa/servicetray/tray"
 )
 
 // Server is the backend that manages services
@@ -64,10 +63,6 @@ func (s *Server) Init(_ bool, _ *bool) error {
 		}
 	}()
 
-	// At this point, we've had chances to error out, and we're about to spin
-	// up background goroutines to handle RPC. So finally start the UI.
-	tray.Init()
-
 	// Handle interrupt & kill signal, to try to clean up
 	go func() {
 		signals := make(chan os.Signal, 1)
@@ -104,8 +99,6 @@ func (s *Server) Init(_ bool, _ *bool) error {
 		}
 	}
 
-	log.Info("Shut down server, stopping UI")
-	tray.Quit()
 	log.Info("All done")
 
 	return nil
