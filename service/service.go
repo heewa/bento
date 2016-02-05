@@ -274,23 +274,23 @@ func (s *Service) Pid() int {
 }
 
 // Stdout gets lines from stdout since a line index
-func (s *Service) Stdout(pid, since int) (lines []string, newSince int, newPid int) {
+func (s *Service) Stdout(pid, since, max int) (lines []string, newSince int, newPid int) {
 	s.stateLock.RLock()
 	defer s.stateLock.RUnlock()
 	s.outLock.RLock()
 	defer s.outLock.RUnlock()
 
-	return getOutput(pid, since, s.Pid(), s.stdoutShifts, s.stdout)
+	return getOutput(pid, since, s.Pid(), s.stdoutShifts, max, s.stdout)
 }
 
 // Stderr gets lines from stderr since a line index
-func (s *Service) Stderr(pid, since int) (lines []string, newSince int, newPid int) {
+func (s *Service) Stderr(pid, since, max int) (lines []string, newSince int, newPid int) {
 	s.stateLock.RLock()
 	defer s.stateLock.RUnlock()
 	s.outLock.RLock()
 	defer s.outLock.RUnlock()
 
-	return getOutput(pid, since, s.Pid(), s.stderrShifts, s.stderr)
+	return getOutput(pid, since, s.Pid(), s.stderrShifts, max, s.stderr)
 }
 
 func (s *Service) signal(sig os.Signal) error {
@@ -333,7 +333,7 @@ func watchOutput(out *bufio.Scanner, tail *[]string, shifts *int, lock *sync.RWM
 	done <- struct{}{}
 }
 
-func getOutput(pid, since, currentPid, shifts int, outLines []string) ([]string, int, int) {
+func getOutput(pid, since, currentPid, shifts, max int, outLines []string) ([]string, int, int) {
 	// If pid doesn't match, there's been a restart since the last call, so
 	// reset since
 	if pid != currentPid {
@@ -348,6 +348,13 @@ func getOutput(pid, since, currentPid, shifts int, outLines []string) ([]string,
 	}
 
 	numLines := len(outLines) - index
+
+	// Max counts in reverse from end
+	if max > 0 && numLines > max {
+		index += numLines - max
+		numLines = max
+	}
+
 	lines := []string{}
 	if numLines > 0 {
 		lines = append([]string{}, outLines[index:]...)

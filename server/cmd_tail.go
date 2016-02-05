@@ -10,6 +10,9 @@ type TailArgs struct {
 	Name string
 	Pid  int
 
+	// Max num lines from end to include, regardless of since-line
+	MaxLines int
+
 	Stdout          bool
 	StdoutSinceLine int
 
@@ -36,11 +39,13 @@ func (s *Server) Tail(args *TailArgs, reply *TailResponse) error {
 	}
 
 	if args.Stdout {
-		reply.StdoutLines, reply.StdoutSinceLine, reply.Pid = serv.Stdout(args.Pid, args.StdoutSinceLine)
+		reply.StdoutLines, reply.StdoutSinceLine, reply.Pid = serv.Stdout(
+			args.Pid, args.StdoutSinceLine, args.MaxLines)
 	}
 
 	if args.Stderr {
-		reply.StderrLines, reply.StderrSinceLine, reply.Pid = serv.Stderr(args.Pid, args.StderrSinceLine)
+		reply.StderrLines, reply.StderrSinceLine, reply.Pid = serv.Stderr(
+			args.Pid, args.StderrSinceLine, args.MaxLines)
 	}
 
 	return nil

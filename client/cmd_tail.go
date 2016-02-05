@@ -5,7 +5,7 @@ import (
 )
 
 // Tail calls the Tail cmd on the Server
-func (c *Client) Tail(name string, stdout, stderr bool, follow, followRestarts bool) (<-chan string, <-chan string, <-chan error) {
+func (c *Client) Tail(name string, stdout, stderr bool, follow, followRestarts bool, max int) (<-chan string, <-chan string, <-chan error) {
 	if followRestarts {
 		follow = true
 	}
@@ -15,9 +15,10 @@ func (c *Client) Tail(name string, stdout, stderr bool, follow, followRestarts b
 	errChan := make(chan error)
 
 	args := server.TailArgs{
-		Name:   name,
-		Stdout: stdout,
-		Stderr: stderr,
+		Name:     name,
+		Stdout:   stdout,
+		Stderr:   stderr,
+		MaxLines: max,
 	}
 	reply := server.TailResponse{}
 
@@ -63,6 +64,7 @@ func (c *Client) Tail(name string, stdout, stderr bool, follow, followRestarts b
 			args.StdoutSinceLine = reply.StdoutSinceLine
 			args.StderrSinceLine = reply.StderrSinceLine
 			args.Pid = reply.Pid
+			args.MaxLines = 0
 
 			// Look forever if following, or just once if not
 			if !follow {

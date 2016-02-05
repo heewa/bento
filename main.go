@@ -49,6 +49,7 @@ var (
 	stopService = stopCmd.Arg("service", "Service to stop").Required().String()
 
 	tailCmd            = kingpin.Command("tail", "Tail stdout and/or stderr of a service")
+	tailNum            = tailCmd.Flag("num", "Number of lines from end to output").Short('n').Default("10").Int()
 	tailFollow         = tailCmd.Flag("follow", "Continuously output new lines from service").Short('f').Bool()
 	tailFollowRestarts = tailCmd.Flag("follow-restarts", "Continuously output new lines from service, even after it exits and starts again").Short('F').Bool()
 	tailStdout         = tailCmd.Flag("stdout", "Tail just stdout").Bool()
@@ -201,7 +202,8 @@ func handleTail(client *client.Client) error {
 		*tailStdout || !*tailStderr,
 		*tailStderr || !*tailStdout,
 		*tailFollow,
-		*tailFollowRestarts)
+		*tailFollowRestarts,
+		*tailNum)
 
 	// Keep outputting until done
 	done := make(chan interface{})
