@@ -92,7 +92,12 @@ func Init(serv *server.Server, serviceUpdates <-chan service.Info) {
 		// Watch for service changes
 		go func() {
 			for {
-				SetService(<-serviceUpdates)
+				info := <-serviceUpdates
+				if info.Dead {
+					RemoveService(info.Name)
+				} else {
+					SetService(info)
+				}
 			}
 		}()
 	})
@@ -146,7 +151,48 @@ func SetService(info service.Info) {
 
 // RemoveService removes an item from the tray
 func RemoveService(name string) {
-	// TODO: implement this by swapping items around
+	// The system tray implementation doesn't support removing, so just clean
+	// it out and swap with the end of the list
+	itemLock.Lock()
+	defer itemLock.Unlock()
+
+	// Find the item
+	index := -1
+	for i := 0; index == -1 && i < len(serviceItems); i++ {
+		if serviceItems[i].info.Name == name {
+			index = i
+		}
+	}
+
+	// Nothing to remove
+	if index == -1 {
+		return
+	}
+
+	// Move the last alive item to this position, and move Quit to the last
+	// item. Like:
+	//     Service A
+	//     Dead Service <---
+	//     Service B       |
+	//     Service C -------  <-
+	//     Quit ----------------
+	lastIndex := len(serviceItems) - 1
+	if index < lastIndex {
+		serviceItems[index].Set(serviceItems[lastIndex].info)
+	}
+
+	// Clear and add current Quit to dead items
+	quitItem.SetTitle("")
+	quitItem.SetTooltip("")
+	deadItems = append([]*systray.MenuItem{quitItem}, deadItems...)
+
+	// Use lastIndex for Quit
+	quitItem = serviceItems[lastIndex].menu
+	quitItem.SetTitle(quitTitle)
+	quitItem.SetTooltip(quitTooltip)
+
+	// Remove last service item from slice
+	serviceItems = serviceItems[:lastIndex]
 }
 
 // Since items change roles over time, look up logical item at each click

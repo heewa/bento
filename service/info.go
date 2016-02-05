@@ -13,6 +13,7 @@ type Info struct {
 	Running   bool
 	Pid       int
 	Succeeded bool
+	Dead      bool
 
 	StartTime time.Time
 	EndTime   time.Time

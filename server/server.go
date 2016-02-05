@@ -160,7 +160,9 @@ func (s *Server) removeService(name string) error {
 	delete(s.services, name)
 
 	// Notify watchers
-	s.serviceUpdates <- srvc.Info()
+	info := srvc.Info()
+	info.Dead = true
+	s.serviceUpdates <- info
 
 	return nil
 }
