@@ -34,6 +34,10 @@ var (
 	runProg = runCmd.Arg("program", "Program to run").Required().String()
 	runArgs = runCmd.Arg("args", "Args to pass to program, with -- prefix to prevent args from being processed here").Strings()
 
+	cleanCmd     = kingpin.Command("clean", "Remove one or multiple stopped temporary services")
+	cleanAge     = cleanCmd.Flag("age", "Only remove temp services that have been stopped for at least this long. Specify like '10s' or '5m'").Default("0s").Duration()
+	cleanService = cleanCmd.Arg("service", "Service name or pattern").String()
+
 	// Service commands
 
 	startCmd     = kingpin.Command("start", "Start an existing service")
@@ -63,8 +67,9 @@ var (
 	commandTable = map[string](func(*client.Client) error){
 		"shutdown": handleShutdown,
 
-		"list": handleList,
-		"run":  handleRun,
+		"list":  handleList,
+		"run":   handleRun,
+		"clean": handleClean,
 
 		"start": handleStart,
 		"stop":  handleStop,
@@ -163,6 +168,26 @@ func handleRun(client *client.Client) error {
 			os.Exit(1)
 		}
 	}
+	return err
+}
+
+func handleClean(client *client.Client) error {
+	cleaned, failed, err := client.Clean(*cleanService, *cleanAge)
+
+	if len(cleaned) > 0 {
+		fmt.Printf("Removed %d services:\n", len(cleaned))
+		for _, cleaned := range cleaned {
+			fmt.Printf("    %s\n", cleaned)
+		}
+	}
+
+	if len(failed) > 0 {
+		fmt.Printf("Failed to remove %d services:\n", len(failed))
+		for _, failed := range failed {
+			fmt.Printf("    [%s] -- %s\n", failed.Service.Name, failed.Err)
+		}
+	}
+
 	return err
 }
 

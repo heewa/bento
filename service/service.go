@@ -25,6 +25,9 @@ type Config struct {
 	Args    []string
 	Dir     string
 	Env     map[string]string
+
+	// Temp is true if this config isn't loaded from a file, created at runtime
+	Temp bool
 }
 
 // Sanitize checks a config for valitidy, and fixes up values that are dynamic

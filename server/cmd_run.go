@@ -39,6 +39,8 @@ func (s *Server) Run(args *RunArgs, reply *RunResponse) error {
 		Args:    args.Args,
 		Dir:     args.Dir,
 		Env:     args.Env,
+
+		Temp: true,
 	}
 	if err := conf.Sanitize(); err != nil {
 		return err
