@@ -171,6 +171,22 @@ func (s *Service) Start(updates chan<- Info) error {
 	s.exitChan = make(chan interface{})
 	s.process = cmd.Process
 
+	// Periodically send info about service, while it's running
+	go func() {
+		tick := time.Tick(3 * time.Second)
+		for {
+			select {
+			case <-s.exitChan:
+				return
+			case <-tick:
+				select {
+				case updates <- s.Info():
+				default:
+				}
+			}
+		}
+	}()
+
 	go func() {
 		// Read from stdout/err & throw in a tail-array. Completely exhaust
 		// both before waiting for the cmd to exit, cuz Wait will close the
