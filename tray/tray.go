@@ -12,6 +12,9 @@ import (
 )
 
 const (
+	mainTitle   = "🍱"
+	mainTooltip = "Use servicetray from the cmdline to manage services"
+
 	quitTitle   = "Quit ServiceTray"
 	quitTooltip = "Beware: quitting will stop all services!"
 )
@@ -64,8 +67,8 @@ func Init(serv *server.Server, serviceUpdates <-chan service.Info) {
 
 		go systray.Run(func() {
 			// TODO: icon instead of title
-			systray.SetTitle("ST")
-			systray.SetTooltip("Use servicetray from the cmdline to manage services")
+			systray.SetTitle(mainTitle)
+			systray.SetTooltip(mainTooltip)
 
 			// TODO: revive without dead items
 
