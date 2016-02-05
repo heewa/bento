@@ -10,6 +10,7 @@ import (
 
 	log "github.com/inconshreveable/log15"
 
+	"github.com/heewa/servicetray/config"
 	"github.com/heewa/servicetray/service"
 )
 
@@ -26,9 +27,9 @@ type Server struct {
 }
 
 // New creates a new Server
-func New(fifoPath string) (*Server, <-chan service.Info, error) {
+func New() (*Server, <-chan service.Info, error) {
 	// Catch obvious address errors early
-	addr, err := net.ResolveUnixAddr("unix", fifoPath)
+	addr, err := net.ResolveUnixAddr("unix", config.FifoPath)
 	if err != nil {
 		return nil, nil, err
 	}

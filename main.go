@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"os/user"
 
 	log "github.com/inconshreveable/log15"
 	"gopkg.in/alecthomas/kingpin.v2"
@@ -15,14 +14,6 @@ import (
 )
 
 var (
-	// Global flags
-
-	verbosity = kingpin.Flag("verbose", "Increase log verbosity, can be used multiple times").Short('v').Counter()
-
-	fifo = kingpin.Flag("fifo", "Path to fifo used to communicate between client and server").String()
-
-	logPath = kingpin.Flag("log", "Path to server's log file, or '-' for stdout").String()
-
 	// Server Commands
 
 	initCmd = kingpin.Command("init", "Start a new server").Hidden()
@@ -89,28 +80,11 @@ func main() {
 
 	// Set up logging twice, cuz conf might change it, but it also logs
 	setupLogging(cmd)
-
-	if err := config.Load(); err != nil {
+	if err := config.Load(cmd == "init"); err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
 	}
-
-	// Set defaults on empty flags
-	if *fifo == "" {
-		*fifo = config.FifoPath
-	}
-	if *logPath == "" {
-		*logPath = config.LogPath
-	}
-
 	setupLogging(cmd)
-
-	// Fix up fifo path if it contains a ~
-	if len(*fifo) > 2 && (*fifo)[:2] == "~/" {
-		if usr, err := user.Current(); err == nil {
-			*fifo = fmt.Sprintf("%s/%s", usr.HomeDir, (*fifo)[2:])
-		}
-	}
 
 	// All other command besides init require a connection to the server
 	if cmd == "init" {
@@ -119,7 +93,7 @@ func main() {
 			os.Exit(1)
 		}
 	} else {
-		clnt, err := client.New(*fifo)
+		clnt, err := client.New()
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err.Error())
 			os.Exit(1)
@@ -129,8 +103,8 @@ func main() {
 		if err := clnt.Connect(); err != nil {
 			// Try to be helpful with the message. If fifo exists and we still
 			// couldn't connect, maybe the server died before cleaning it up.
-			if _, err = os.Stat(*fifo); err == nil {
-				err = fmt.Errorf("Failed to connect to server: timed out. It's possible the server died before cleaning up. Try removing %s and trying again", *fifo)
+			if _, err = os.Stat(config.FifoPath); err == nil {
+				err = fmt.Errorf("Failed to connect to server: timed out. It's possible the server died before cleaning up. Try removing %s and trying again", config.FifoPath)
 			}
 			fmt.Fprintln(os.Stderr, err.Error())
 			os.Exit(1)
@@ -149,7 +123,7 @@ func main() {
 }
 
 func handleInit() error {
-	server, serviceUpdates, err := server.New(*fifo)
+	server, serviceUpdates, err := server.New()
 	if err != nil {
 		return err
 	}
@@ -274,22 +248,18 @@ func handlePid(client *client.Client) error {
 }
 
 func setupLogging(cmd string) {
-	logLevel := log.Lvl(*verbosity) + log.LvlWarn
-	if logLevel > log.LvlDebug {
-		logLevel = log.LvlDebug
-	}
-
 	// Set client's logging to stdout, and server's if no path, or path of '-'
 	logHandler := log.StdoutHandler
-	if cmd == "init" && *logPath != "" && *logPath != "-" {
+	if cmd == "init" && config.LogPath != "" && config.LogPath != "-" {
 		var err error
-		logHandler, err = log.FileHandler(*logPath, log.LogfmtFormat())
+		logHandler, err = log.FileHandler(config.LogPath, log.LogfmtFormat())
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err.Error())
 			os.Exit(1)
 		}
 	}
+
 	log.Root().SetHandler(
-		log.LvlFilterHandler(logLevel,
+		log.LvlFilterHandler(config.LogLevel,
 			logHandler))
 }

@@ -8,6 +8,7 @@ import (
 	"path"
 
 	log "github.com/inconshreveable/log15"
+	"gopkg.in/alecthomas/kingpin.v2"
 	"gopkg.in/yaml.v2"
 )
 
@@ -21,21 +22,33 @@ const (
 # Set 'log' to a path for the server to log there. 
 #log: "/path/to/servicetray.log"
 
+# Log Level can be "crit", "error", "warn", "info", or "debug"
+#log_level: "info"
+
 # Path to the fifo file that the clients and server use to communicate
 #fifo: "/path/to/servicetray.fifo"
 `
 )
 
 var (
+	// Verbosity
+	LogLevel = log.LvlWarn
+
 	// LogPath -
 	LogPath = "servicetray.log"
 
 	// FifoPath -
 	FifoPath = ".fifo"
+
+	// Cmdline args that override conf
+	verbosity = kingpin.Flag("verbose", "Increase log verbosity, can be used multiple times").Short('v').Counter()
+	fifoPath  = kingpin.Flag("fifo", "Path to fifo used to communicate between client and server").String()
+	logPath   = kingpin.Flag("log", "Path to server's log file, or '-' for stdout").String()
 )
 
 // ConfFormat is the yaml definition of the config file
 type ConfFormat struct {
+	LogLevel string `yaml:"log_level"`
 	LogPath  string `yaml:"log"`
 	FifoPath string `yaml:"fifo"`
 }
@@ -43,7 +56,7 @@ type ConfFormat struct {
 // Load reads the config file and populates the global conf. It also handles
 // creating the dir in the user's home if it doesn't exist, and populating
 // an empty log file with comments, to guide the user.
-func Load() error {
+func Load(isServer bool) error {
 	log.Debug("Loading config")
 
 	dirPath, err := getFullConfPath()
@@ -90,7 +103,19 @@ func Load() error {
 		return fmt.Errorf("Failed to parse conf file (%s): %v", confPath, err)
 	}
 
-	if conf.LogPath != "" {
+	if *verbosity > 0 {
+		LogLevel = log.LvlWarn + log.Lvl(*verbosity)
+	} else if level, err := log.LvlFromString(conf.LogLevel); err == nil && isServer {
+		LogLevel = level
+	} else if isServer {
+		LogLevel = log.LvlInfo
+	} else {
+		LogLevel = log.LvlWarn
+	}
+
+	if *logPath != "" {
+		LogPath = *logPath
+	} else if conf.LogPath != "" {
 		LogPath = conf.LogPath
 	} else {
 		if LogPath, err = getFullConfPath("log"); err != nil {
@@ -98,7 +123,9 @@ func Load() error {
 		}
 	}
 
-	if conf.FifoPath != "" {
+	if *fifoPath != "" {
+		FifoPath = *fifoPath
+	} else if conf.FifoPath != "" {
 		FifoPath = conf.FifoPath
 	} else {
 		if FifoPath, err = getFullConfPath(".fifo"); err != nil {

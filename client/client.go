@@ -11,25 +11,24 @@ import (
 	"time"
 
 	log "github.com/inconshreveable/log15"
+
+	"github.com/heewa/servicetray/config"
 )
 
 // Client handles communicating with a Server
 type Client struct {
-	fifo   string
 	client *rpc.Client
 }
 
 // New creates a new Client
-func New(fifo string) (*Client, error) {
+func New() (*Client, error) {
 	// Resolve the net address to make sure it's valid
-	_, err := net.ResolveUnixAddr("unix", fifo)
+	_, err := net.ResolveUnixAddr("unix", config.FifoPath)
 	if err != nil {
 		return nil, fmt.Errorf("Bad fifo path: %v", err)
 	}
 
-	return &Client{
-		fifo: fifo,
-	}, nil
+	return &Client{}, nil
 }
 
 // Connect tries to connect to a server, running a new one if necessary
@@ -44,8 +43,8 @@ func (c *Client) Connect() error {
 	log.Debug("Connecting to server")
 	go func() {
 		// Try to connect if fifo exists
-		if _, err := os.Stat(c.fifo); err == nil {
-			client, err := rpc.Dial("unix", c.fifo)
+		if _, err := os.Stat(config.FifoPath); err == nil {
+			client, err := rpc.Dial("unix", config.FifoPath)
 			if err == nil {
 				clientChan <- client
 				return
@@ -57,7 +56,12 @@ func (c *Client) Connect() error {
 			return
 		}
 
-		cmd := exec.Command(os.Args[0], "--fifo", c.fifo, "init")
+		// Pass args for config, which could have overriden file values
+		cmd := exec.Command(
+			os.Args[0],
+			"--fifo", config.FifoPath,
+			"--log", config.LogPath,
+			"init")
 		log.Debug("Server might not running, starting one", "args", strings.Join(cmd.Args, " "))
 
 		// Watch stdout & stderr output for server for a bit
@@ -95,8 +99,8 @@ func (c *Client) Connect() error {
 			time.Sleep(500 * time.Millisecond)
 
 			// Only attemp if fifo even exists
-			if _, err = os.Stat(c.fifo); err == nil {
-				client, err := rpc.Dial("unix", c.fifo)
+			if _, err = os.Stat(config.FifoPath); err == nil {
+				client, err := rpc.Dial("unix", config.FifoPath)
 				if err == nil {
 					clientChan <- client
 					return
