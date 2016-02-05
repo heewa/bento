@@ -9,6 +9,7 @@ import (
 	"gopkg.in/alecthomas/kingpin.v2"
 
 	"github.com/heewa/servicetray/client"
+	"github.com/heewa/servicetray/config"
 	"github.com/heewa/servicetray/server"
 	"github.com/heewa/servicetray/tray"
 )
@@ -18,7 +19,9 @@ var (
 
 	verbosity = kingpin.Flag("verbose", "Increase log verbosity, can be used multiple times").Short('v').Counter()
 
-	fifo = kingpin.Flag("fifo", "Path to fifo used to communicate between client and server").Default("~/.servicetray.fifo").String()
+	fifo = kingpin.Flag("fifo", "Path to fifo used to communicate between client and server").String()
+
+	logPath = kingpin.Flag("log", "Path to server's log file, or '-' for stdout").String()
 
 	// Server Commands
 
@@ -84,14 +87,23 @@ var (
 func main() {
 	cmd := kingpin.Parse()
 
-	logLevel := log.Lvl(*verbosity) + log.LvlWarn
-	if logLevel > log.LvlDebug {
-		logLevel = log.LvlDebug
+	// Set up logging twice, cuz conf might change it, but it also logs
+	setupLogging(cmd)
+
+	if err := config.Load(); err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(1)
 	}
 
-	log.Root().SetHandler(
-		log.LvlFilterHandler(logLevel,
-			log.StdoutHandler))
+	// Set defaults on empty flags
+	if *fifo == "" {
+		*fifo = config.FifoPath
+	}
+	if *logPath == "" {
+		*logPath = config.LogPath
+	}
+
+	setupLogging(cmd)
 
 	// Fix up fifo path if it contains a ~
 	if len(*fifo) > 2 && (*fifo)[:2] == "~/" {
@@ -259,4 +271,25 @@ func handlePid(client *client.Client) error {
 		fmt.Println(info.Pid)
 	}
 	return err
+}
+
+func setupLogging(cmd string) {
+	logLevel := log.Lvl(*verbosity) + log.LvlWarn
+	if logLevel > log.LvlDebug {
+		logLevel = log.LvlDebug
+	}
+
+	// Set client's logging to stdout, and server's if no path, or path of '-'
+	logHandler := log.StdoutHandler
+	if cmd == "init" && *logPath != "" && *logPath != "-" {
+		var err error
+		logHandler, err = log.FileHandler(*logPath, log.LogfmtFormat())
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err.Error())
+			os.Exit(1)
+		}
+	}
+	log.Root().SetHandler(
+		log.LvlFilterHandler(logLevel,
+			logHandler))
 }

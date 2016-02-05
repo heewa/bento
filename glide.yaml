@@ -3,3 +3,4 @@ import:
 - package: github.com/inconshreveable/log15
 - package: gopkg.in/alecthomas/kingpin.v2
 - package: github.com/getlantern/systray
+- package: gopkg.in/yaml.v2
