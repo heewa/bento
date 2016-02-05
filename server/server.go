@@ -143,3 +143,24 @@ func (s *Server) addService(serv *service.Service, replace bool) bool {
 	s.services[serv.Conf.Name] = serv
 	return true
 }
+
+func (s *Server) removeService(name string) error {
+	s.servicesLock.Lock()
+	defer s.servicesLock.Unlock()
+
+	srvc := s.services[name]
+	if srvc == nil {
+		return nil
+	}
+
+	if err := srvc.Stop(); err != nil {
+		return err
+	}
+
+	delete(s.services, name)
+
+	// Notify watchers
+	s.serviceUpdates <- srvc.Info()
+
+	return nil
+}
