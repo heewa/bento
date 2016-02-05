@@ -38,9 +38,12 @@ func (i Info) String() string {
 		}
 
 		state = fmt.Sprintf(
-			"<%s> runtime:%v pid:%d started:%s ended:%s",
-			result, i.Runtime, i.Pid,
-			i.StartTime.Format(time.UnixDate), i.EndTime.Format(time.UnixDate))
+			"<%s> runtime:%v ended:%s ago pid:%d started:%s",
+			result,
+			i.Runtime,
+			time.Since(i.EndTime).String(),
+			i.Pid,
+			i.StartTime.Format(time.UnixDate))
 	}
 
 	cmd := i.Program
