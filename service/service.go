@@ -246,6 +246,10 @@ func (s *Service) Start(updates chan<- Info) error {
 
 // Stop stops running the service
 func (s *Service) Stop() error {
+	if !s.Running() {
+		return nil
+	}
+
 	// Try a sequence increasingly urgent signals
 	signals := []os.Signal{os.Interrupt, syscall.SIGTERM, os.Kill}
 
