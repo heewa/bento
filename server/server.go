@@ -124,7 +124,9 @@ func (s *Server) listServices() []*service.Service {
 
 	services := make([]*service.Service, 0, len(s.services))
 	for _, serv := range s.services {
-		services = append(services, serv)
+		if serv != nil {
+			services = append(services, serv)
+		}
 	}
 
 	return services
