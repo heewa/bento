@@ -14,6 +14,7 @@ import (
 )
 
 const (
+	shortTailLen  = 10
 	maxOutputSize = 100 * 1024 * 1024 // 100mb
 )
 
@@ -41,6 +42,7 @@ type Service struct {
 	stdoutShifts int
 	stderr       []string
 	stderrShifts int
+	shortTail    []string
 }
 
 // New creates a new Service
@@ -102,6 +104,12 @@ func (s *Service) Info() Info {
 	if !running && s.state != nil {
 		info.Succeeded = s.state.Success()
 	}
+
+	// Lock out for a shorter time
+	s.outLock.RLock()
+	defer s.outLock.RUnlock()
+	info.Tail = make([]string, len(s.shortTail))
+	copy(info.Tail, s.shortTail)
 
 	return info
 }
@@ -193,8 +201,8 @@ func (s *Service) Start(updates chan<- Info) error {
 		// pipes before we can read everything from them. Read each one
 		// separately in a goroutine so they don't block each other
 		done := make(chan interface{})
-		go watchOutput(stdout, &s.stdout, &s.stdoutShifts, &s.outLock, done)
-		go watchOutput(stderr, &s.stderr, &s.stderrShifts, &s.outLock, done)
+		go s.watchOutput(stdout, &s.stdout, &s.stdoutShifts, done)
+		go s.watchOutput(stderr, &s.stderr, &s.stderrShifts, done)
 		<-done
 		<-done
 
@@ -309,13 +317,20 @@ func (s *Service) signal(sig os.Signal) error {
 	return nil
 }
 
-func watchOutput(out *bufio.Scanner, tail *[]string, shifts *int, lock *sync.RWMutex, done chan<- interface{}) {
+func (s *Service) watchOutput(out *bufio.Scanner, tail *[]string, shifts *int, done chan<- interface{}) {
 	size := 0
 
 	for out.Scan() {
-		lock.Lock()
+		s.outLock.Lock()
 
 		line := out.Text()
+
+		if len(s.shortTail) >= shortTailLen {
+			s.shortTail = append(s.shortTail[len(s.shortTail)-shortTailLen:], line)
+		} else {
+			s.shortTail = append(s.shortTail, line)
+		}
+
 		size += len(line)
 		*tail = append(*tail, line)
 
@@ -324,10 +339,10 @@ func watchOutput(out *bufio.Scanner, tail *[]string, shifts *int, lock *sync.RWM
 		for len(*tail) > 1 && size > maxOutputSize {
 			size -= len((*tail)[0])
 			*tail = (*tail)[1:]
-			*shifts += 1
+			*shifts++
 		}
 
-		lock.Unlock()
+		s.outLock.Unlock()
 	}
 
 	done <- struct{}{}

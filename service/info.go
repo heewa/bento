@@ -17,6 +17,8 @@ type Info struct {
 	StartTime time.Time
 	EndTime   time.Time
 	Runtime   time.Duration
+
+	Tail []string
 }
 
 func (i Info) String() string {

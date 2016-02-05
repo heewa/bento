@@ -2,6 +2,7 @@ package tray
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/getlantern/systray"
@@ -53,7 +54,11 @@ func (item *ServiceItem) Set(info service.Info) {
 		item.menu.Uncheck()
 	}
 
-	item.menu.SetTooltip(info.String())
+	if len(info.Tail) > 0 {
+		item.menu.SetTooltip(strings.Join(info.Tail, "\n"))
+	} else {
+		item.menu.SetTooltip(info.String())
+	}
 }
 
 // Init starts running the system tray. It's required before using this package
