@@ -33,18 +33,24 @@ func (s *Server) Run(args *RunArgs, reply *RunResponse) error {
 		}
 	}
 
-	serv, err := service.New(
-		args.Name,
-		args.Program,
-		args.Args,
-		args.Dir,
-		args.Env)
+	conf := service.Config{
+		Name:    args.Name,
+		Program: args.Program,
+		Args:    args.Args,
+		Dir:     args.Dir,
+		Env:     args.Env,
+	}
+	if err := conf.Sanitize(); err != nil {
+		return err
+	}
+
+	serv, err := service.New(conf)
 	if err != nil {
 		return err
 	}
 
 	if !s.addService(serv, false) {
-		return fmt.Errorf("Service with name '%s' already exists", serv.Name)
+		return fmt.Errorf("Service with name '%s' already exists", serv.Conf.Name)
 	}
 
 	// Update after creating, but before changing its state
@@ -53,7 +59,7 @@ func (s *Server) Run(args *RunArgs, reply *RunResponse) error {
 	default:
 	}
 
-	log.Info("Running service", "service", serv.Name)
+	log.Info("Running service", "service", serv.Conf.Name)
 	if err := serv.Start(s.serviceUpdates); err != nil {
 		return err
 	}

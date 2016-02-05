@@ -25,7 +25,7 @@ func (s *Server) Stop(args StopArgs, reply *StopResponse) error {
 		return fmt.Errorf("Service '%s' not found.", args.Name)
 	}
 
-	log.Info("Stopping service", "service", serv.Name)
+	log.Info("Stopping service", "service", serv.Conf.Name)
 	err := serv.Stop()
 
 	// Set info regarless of error

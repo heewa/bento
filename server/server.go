@@ -134,10 +134,10 @@ func (s *Server) addService(serv *service.Service, replace bool) bool {
 	s.servicesLock.Lock()
 	defer s.servicesLock.Unlock()
 
-	if !replace && s.services[serv.Name] != nil {
+	if !replace && s.services[serv.Conf.Name] != nil {
 		return false
 	}
 
-	s.services[serv.Name] = serv
+	s.services[serv.Conf.Name] = serv
 	return true
 }

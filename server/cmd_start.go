@@ -25,7 +25,7 @@ func (s *Server) Start(args StartArgs, reply *StartResponse) error {
 		return fmt.Errorf("Service '%s' not found.", args.Name)
 	}
 
-	log.Info("Starting service", "service", serv.Name)
+	log.Info("Starting service", "service", serv.Conf.Name)
 	err := serv.Start(s.serviceUpdates)
 
 	// Set info regardless of error

@@ -8,7 +8,7 @@ import (
 
 // Info holds info about a service
 type Info struct {
-	Service
+	Config
 
 	Running   bool
 	Pid       int
@@ -21,6 +21,7 @@ type Info struct {
 	Tail []string
 }
 
+// String gets a user friendly string about a service.
 func (i Info) String() string {
 	var state string
 	if i.Running {

@@ -18,13 +18,45 @@ const (
 	maxOutputSize = 100 * 1024 * 1024 // 100mb
 )
 
-// Service -
-type Service struct {
+// Config is the settings a service is made from
+type Config struct {
 	Name    string
 	Program string
 	Args    []string
 	Dir     string
 	Env     map[string]string
+}
+
+// Sanitize checks a config for valitidy, and fixes up values that are dynamic
+// or have defaults.
+func (c *Config) Sanitize() error {
+	switch "" {
+	case c.Name:
+		return fmt.Errorf("Service needs a name")
+	case c.Program:
+		return fmt.Errorf("Service needs a program to run")
+	case c.Dir:
+		// Try the current dir
+		if curDir, err := os.Getwd(); err == nil {
+			c.Dir = curDir
+		} else {
+			// Try the user's home dir
+			if usr, err := user.Current(); err == nil {
+				c.Dir = usr.HomeDir
+			} else {
+				// I guess root?
+				c.Dir = "/"
+			}
+		}
+	}
+
+	return nil
+}
+
+// Service represents a loaded service config. It manages running, stopping,
+// and controlling its process.
+type Service struct {
+	Conf Config
 
 	// Closed when process exits, no need for lock to use.
 	exitChan chan interface{}
@@ -46,33 +78,14 @@ type Service struct {
 }
 
 // New creates a new Service
-func New(name string, program string, args []string, dir string, env map[string]string) (*Service, error) {
-	if dir == "" {
-		// Try the current dir
-		if curDir, err := os.Getwd(); err == nil {
-			dir = curDir
-		} else {
-			// Try the user's home dir
-			if usr, err := user.Current(); err == nil {
-				dir = usr.HomeDir
-			} else {
-				// I guess root?
-				dir = "/"
-			}
-		}
-	}
+func New(conf Config) (*Service, error) {
 
 	// Start off with an existing, but closed exit chan
 	exitChan := make(chan interface{})
 	close(exitChan)
 
 	return &Service{
-		Name:    name,
-		Program: program,
-		Args:    args,
-		Dir:     dir,
-		Env:     env,
-
+		Conf:     conf,
 		exitChan: exitChan,
 	}, nil
 }
@@ -92,7 +105,7 @@ func (s *Service) Info() Info {
 	}
 
 	info := Info{
-		Service: *s,
+		Config:  s.Conf,
 		Running: running,
 		Pid:     s.Pid(),
 
@@ -145,18 +158,18 @@ func (s *Service) Start(updates chan<- Info) error {
 	s.stderr = nil
 	s.stderrShifts = 0
 
-	programPath, err := exec.LookPath(s.Program)
+	programPath, err := exec.LookPath(s.Conf.Program)
 	if err != nil {
 		return err
 	}
 
 	var envItems []string
-	for key, value := range s.Env {
+	for key, value := range s.Conf.Env {
 		envItems = append(envItems, fmt.Sprintf("%s=%s", key, value))
 	}
 
-	cmd := exec.Command(programPath, s.Args...)
-	cmd.Dir = s.Dir
+	cmd := exec.Command(programPath, s.Conf.Args...)
+	cmd.Dir = s.Conf.Dir
 	cmd.Env = envItems
 
 	// Get line-scanners for stdout/err
@@ -208,7 +221,7 @@ func (s *Service) Start(updates chan<- Info) error {
 
 		// Wait for exit
 		err := cmd.Wait()
-		log.Info("Service exited", "name", s.Name, "program", s.Program, "err", err)
+		log.Info("Service exited", "name", s.Conf.Name, "program", s.Conf.Program, "err", err)
 
 		// Update after we let go of lock
 		defer func() {
@@ -237,7 +250,7 @@ func (s *Service) Stop() error {
 	signals := []os.Signal{os.Interrupt, syscall.SIGTERM, os.Kill}
 
 	for _, sig := range signals {
-		log.Debug("Sending service's proc signal", "service", s.Name, "signal", sig)
+		log.Debug("Sending service's proc signal", "service", s.Conf.Name, "signal", sig)
 		if err := s.signal(sig); err != nil {
 			return err
 		}
@@ -269,6 +282,7 @@ func (s *Service) Running() bool {
 	return true
 }
 
+// Pid gets the process id of a running or ended service.
 func (s *Service) Pid() int {
 	s.stateLock.RLock()
 	defer s.stateLock.RUnlock()
