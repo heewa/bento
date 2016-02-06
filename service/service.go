@@ -11,6 +11,8 @@ import (
 	"time"
 
 	log "github.com/inconshreveable/log15"
+
+	"github.com/heewa/servicetray/config"
 )
 
 const (
@@ -27,7 +29,8 @@ type Config struct {
 	Env     map[string]string
 
 	// Temp is true if this config isn't loaded from a file, created at runtime
-	Temp bool
+	Temp       bool
+	CleanAfter time.Duration
 }
 
 // Sanitize checks a config for valitidy, and fixes up values that are dynamic
@@ -51,6 +54,10 @@ func (c *Config) Sanitize() error {
 				c.Dir = "/"
 			}
 		}
+	}
+
+	if c.CleanAfter == 0 {
+		c.CleanAfter = config.CleanTempServicesAfter
 	}
 
 	return nil

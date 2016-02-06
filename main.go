@@ -26,13 +26,14 @@ var (
 	listRunning = listCmd.Arg("running", "List only running services").Bool()
 	listTemp    = listCmd.Arg("temp", "List only temp services").Bool()
 
-	runCmd  = kingpin.Command("run", "Run command as a new service")
-	runWait = runCmd.Flag("wait", "Wait for it exit").Bool()
-	runName = runCmd.Flag("name", "Set a name for the service").String()
-	runDir  = runCmd.Flag("dir", "Directory to run the service from").ExistingDir()
-	runEnv  = runCmd.Flag("env", "Env vars to pass on to service").StringMap()
-	runProg = runCmd.Arg("program", "Program to run").Required().String()
-	runArgs = runCmd.Arg("args", "Args to pass to program, with -- prefix to prevent args from being processed here").Strings()
+	runCmd        = kingpin.Command("run", "Run command as a new service")
+	runCleanAfter = runCmd.Flag("clean-after", "Remove service after it's finished running for this long. Overrides config value for this service.").Duration()
+	runWait       = runCmd.Flag("wait", "Wait for it exit").Bool()
+	runName       = runCmd.Flag("name", "Set a name for the service").String()
+	runDir        = runCmd.Flag("dir", "Directory to run the service from").ExistingDir()
+	runEnv        = runCmd.Flag("env", "Env vars to pass on to service").StringMap()
+	runProg       = runCmd.Arg("program", "Program to run").Required().String()
+	runArgs       = runCmd.Arg("args", "Args to pass to program, with -- prefix to prevent args from being processed here").Strings()
 
 	cleanCmd     = kingpin.Command("clean", "Remove one or multiple stopped temporary services")
 	cleanAge     = cleanCmd.Flag("age", "Only remove temp services that have been stopped for at least this long. Specify like '10s' or '5m'").Default("0s").Duration()
@@ -155,7 +156,7 @@ func handleList(client *client.Client) error {
 }
 
 func handleRun(client *client.Client) error {
-	info, err := client.Run(*runName, *runProg, *runArgs, *runDir, *runEnv)
+	info, err := client.Run(*runName, *runProg, *runArgs, *runDir, *runEnv, *runCleanAfter)
 	if err == nil && !*runWait {
 		fmt.Println(info)
 	} else if err == nil {

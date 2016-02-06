@@ -205,15 +205,15 @@ func (s *Server) watchServices() (chan<- service.Info, <-chan service.Info) {
 					deathWatcherCancels[info.Name] = cancel
 
 					// Death Watch
-					log.Debug("Watching for service death", "service", info.Name)
-					go func(name string, cancel <-chan interface{}) {
+					log.Debug("Watching for service death", "service", info.Name, "cleanAfter", info.CleanAfter)
+					go func(name string, cleanAfter time.Duration, cancel <-chan interface{}) {
 						select {
 						case <-cancel:
-						case <-time.After(config.CleanTempServicesAfter):
+						case <-time.After(cleanAfter):
 							log.Info("Auto-cleaning service after timeout", "service", name)
 							s.removeService(name)
 						}
-					}(info.Name, cancel)
+					}(info.Name, info.CleanAfter, cancel)
 				} else {
 					delete(deathWatcherCancels, info.Name)
 				}

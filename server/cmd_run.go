@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"path/filepath"
+	"time"
 
 	log "github.com/inconshreveable/log15"
 
@@ -11,11 +12,12 @@ import (
 
 // RunArgs are arguments to the Run cmd
 type RunArgs struct {
-	Name    string
-	Program string
-	Args    []string
-	Dir     string
-	Env     map[string]string
+	Name       string
+	Program    string
+	Args       []string
+	Dir        string
+	Env        map[string]string
+	CleanAfter time.Duration
 }
 
 // RunResponse is the response from the Run cmd
@@ -40,7 +42,8 @@ func (s *Server) Run(args *RunArgs, reply *RunResponse) error {
 		Dir:     args.Dir,
 		Env:     args.Env,
 
-		Temp: true,
+		Temp:       true,
+		CleanAfter: args.CleanAfter,
 	}
 	if err := conf.Sanitize(); err != nil {
 		return err
