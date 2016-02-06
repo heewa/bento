@@ -31,7 +31,7 @@ const (
 )
 
 var (
-	// Verbosity
+	// LogLevel -
 	LogLevel = log.LvlWarn
 
 	// LogPath -
@@ -57,8 +57,6 @@ type ConfFormat struct {
 // creating the dir in the user's home if it doesn't exist, and populating
 // an empty log file with comments, to guide the user.
 func Load(isServer bool) error {
-	log.Debug("Loading config")
-
 	dirPath, err := getFullConfPath()
 	if err != nil {
 		return fmt.Errorf("Failed to determine full config dir path: %v", err)
@@ -71,7 +69,6 @@ func Load(isServer bool) error {
 	// Create the config dir if it doesn't exist. Make with user-only
 	// permissions, cuz fifo exists there, which can be used to control
 	// server. Also saved service details could be sensitive.
-	log.Debug("Checking or making config dir", "dir", dirPath)
 	if os.Mkdir(dirPath, 0700); err != nil {
 		return fmt.Errorf("Failed to create config dir (%s): %v", dirPath, err)
 	}
@@ -79,7 +76,7 @@ func Load(isServer bool) error {
 	// Try opening the conf file, on most runs it'll already exist
 	var confData []byte
 	if f, err := os.Open(confPath); err != nil && os.IsNotExist(err) {
-		log.Debug("Creating default conf file", "path", confPath)
+		// Make a default one
 		if err := ioutil.WriteFile(confPath, []byte(defaultConfig), 0660); err != nil {
 			return fmt.Errorf("Failed to create a default config file (%s): %v", confPath, err)
 		}
@@ -89,7 +86,6 @@ func Load(isServer bool) error {
 	} else {
 		defer f.Close()
 
-		log.Debug("Reading conf file", "path", confPath)
 		confData, err = ioutil.ReadAll(f)
 		if err != nil {
 			return fmt.Errorf("Failed to read conf file (%s): %v", confPath, err)
@@ -97,8 +93,6 @@ func Load(isServer bool) error {
 	}
 
 	conf := ConfFormat{}
-
-	log.Debug("Parsing log file")
 	if err := yaml.Unmarshal(confData, &conf); err != nil {
 		return fmt.Errorf("Failed to parse conf file (%s): %v", confPath, err)
 	}
