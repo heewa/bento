@@ -7,6 +7,7 @@ import (
 
 	log "github.com/inconshreveable/log15"
 
+	"github.com/heewa/servicetray/config"
 	"github.com/heewa/servicetray/service"
 )
 
@@ -35,7 +36,7 @@ func (s *Server) Run(args *RunArgs, reply *RunResponse) error {
 		}
 	}
 
-	conf := service.Config{
+	conf := config.Service{
 		Name:    args.Name,
 		Program: args.Program,
 		Args:    args.Args,

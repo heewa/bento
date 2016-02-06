@@ -40,6 +40,9 @@ const (
 )
 
 var (
+	// Services are defined in a file
+	Services []Service
+
 	// LogLevel -
 	LogLevel = log.LvlWarn
 

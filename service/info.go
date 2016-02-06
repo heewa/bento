@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/heewa/servicetray/config"
 )
 
 // Info holds info about a service
 type Info struct {
-	Config
+	*config.Service
 
 	Running   bool
 	Pid       int

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"os/user"
 	"sync"
 	"syscall"
 	"time"
@@ -20,53 +19,10 @@ const (
 	maxOutputSize = 100 * 1024 * 1024 // 100mb
 )
 
-// Config is the settings a service is made from
-type Config struct {
-	Name    string
-	Program string
-	Args    []string
-	Dir     string
-	Env     map[string]string
-
-	// Temp is true if this config isn't loaded from a file, created at runtime
-	Temp       bool
-	CleanAfter time.Duration
-}
-
-// Sanitize checks a config for valitidy, and fixes up values that are dynamic
-// or have defaults.
-func (c *Config) Sanitize() error {
-	switch "" {
-	case c.Name:
-		return fmt.Errorf("Service needs a name")
-	case c.Program:
-		return fmt.Errorf("Service needs a program to run")
-	case c.Dir:
-		// Try the current dir
-		if curDir, err := os.Getwd(); err == nil {
-			c.Dir = curDir
-		} else {
-			// Try the user's home dir
-			if usr, err := user.Current(); err == nil {
-				c.Dir = usr.HomeDir
-			} else {
-				// I guess root?
-				c.Dir = "/"
-			}
-		}
-	}
-
-	if c.CleanAfter == 0 {
-		c.CleanAfter = config.CleanTempServicesAfter
-	}
-
-	return nil
-}
-
 // Service represents a loaded service config. It manages running, stopping,
 // and controlling its process.
 type Service struct {
-	Conf Config
+	Conf config.Service
 
 	// Closed when process exits, no need for lock to use.
 	exitChan chan interface{}
@@ -88,7 +44,7 @@ type Service struct {
 }
 
 // New creates a new Service
-func New(conf Config) (*Service, error) {
+func New(conf config.Service) (*Service, error) {
 
 	// Start off with an existing, but closed exit chan
 	exitChan := make(chan interface{})
@@ -115,7 +71,8 @@ func (s *Service) Info() Info {
 	}
 
 	info := Info{
-		Config:  s.Conf,
+		Service: &s.Conf,
+
 		Running: running,
 		Pid:     s.Pid(),
 
