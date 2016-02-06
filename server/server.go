@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
+	"time"
 
 	log "github.com/inconshreveable/log15"
 
@@ -21,7 +22,7 @@ type Server struct {
 	services     map[string]*service.Service
 	servicesLock sync.RWMutex
 
-	serviceUpdates chan service.Info
+	serviceUpdates chan<- service.Info
 
 	stop chan interface{}
 }
@@ -39,15 +40,17 @@ func New() (*Server, <-chan service.Info, error) {
 	// same entity that's stopping will need to break it out of
 	stop := make(chan interface{}, 1)
 
-	// Communicate with UI about service changes through a channel
-	serviceUpdates := make(chan service.Info, 100)
+	serv := &Server{
+		fifoAddr: addr,
+		services: make(map[string]*service.Service),
+		stop:     stop,
+	}
 
-	return &Server{
-		fifoAddr:       addr,
-		services:       make(map[string]*service.Service),
-		serviceUpdates: serviceUpdates,
-		stop:           stop,
-	}, serviceUpdates, nil
+	// Communicate with UI about service changes through a channel
+	var updatesOut <-chan service.Info
+	serv.serviceUpdates, updatesOut = serv.watchServices()
+
+	return serv, updatesOut, nil
 }
 
 // Init runs the server, listening for RPC calls, blocking until exit
@@ -141,6 +144,7 @@ func (s *Server) addService(serv *service.Service, replace bool) bool {
 	}
 
 	s.services[serv.Conf.Name] = serv
+
 	return true
 }
 
@@ -165,4 +169,57 @@ func (s *Server) removeService(name string) error {
 	s.serviceUpdates <- info
 
 	return nil
+}
+
+func (s *Server) watchServices() (chan<- service.Info, <-chan service.Info) {
+	// TODO: this whole thing should just be based on an event model, pub-sub
+	// or some shit.
+
+	updatesIn := make(chan service.Info)
+	updatesOut := make(chan service.Info, 100)
+
+	go func() {
+		deathWatcherCancels := make(map[string]chan interface{})
+
+		for {
+			info := <-updatesIn
+
+			// Drop if UI isn't keeping up
+			select {
+			case updatesOut <- info:
+			default:
+			}
+
+			// Temp services need to be cleaned up after a timeout after ending
+			if info.Temp {
+				// Any change on a temp service should cancel a death watch
+				cancel := deathWatcherCancels[info.Name]
+				if cancel != nil {
+					// Cancel the current death watcher
+					close(cancel)
+				}
+
+				// If it exitted, start a new death watch
+				if !info.Dead && !info.Running && !info.EndTime.IsZero() {
+					cancel = make(chan interface{})
+					deathWatcherCancels[info.Name] = cancel
+
+					// Death Watch
+					log.Debug("Watching for service death", "service", info.Name)
+					go func(name string, cancel <-chan interface{}) {
+						select {
+						case <-cancel:
+						case <-time.After(config.CleanTempServicesAfter):
+							log.Info("Auto-cleaning service after timeout", "service", name)
+							s.removeService(name)
+						}
+					}(info.Name, cancel)
+				} else {
+					delete(deathWatcherCancels, info.Name)
+				}
+			}
+		}
+	}()
+
+	return updatesIn, updatesOut
 }

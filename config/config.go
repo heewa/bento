@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/user"
 	"path"
+	"time"
 
 	log "github.com/inconshreveable/log15"
 	"gopkg.in/alecthomas/kingpin.v2"
@@ -27,6 +28,14 @@ const (
 
 # Path to the fifo file that the clients and server use to communicate
 #fifo: "/path/to/servicetray.fifo"
+
+# When temp services exit, after this duration (unless they are restarted),
+# they are auto-removed. This can be override from the cmdline for an
+# individual service when creating it.
+#
+# Values can be like "1s" (1 second), "1h" (1 hour), "1h15m10s" (1 hour, 15
+# minutes and 10 seconds)
+#clean_temp_services_after: "1h"
 `
 )
 
@@ -40,6 +49,9 @@ var (
 	// FifoPath -
 	FifoPath = ".fifo"
 
+	// CleanTempServicesAfter -
+	CleanTempServicesAfter = 1 * time.Hour
+
 	// Cmdline args that override conf
 	verbosity = kingpin.Flag("verbose", "Increase log verbosity, can be used multiple times").Short('v').Counter()
 	fifoPath  = kingpin.Flag("fifo", "Path to fifo used to communicate between client and server").String()
@@ -48,9 +60,10 @@ var (
 
 // ConfFormat is the yaml definition of the config file
 type ConfFormat struct {
-	LogLevel string `yaml:"log_level"`
-	LogPath  string `yaml:"log"`
-	FifoPath string `yaml:"fifo"`
+	LogLevel               string `yaml:"log_level"`
+	LogPath                string `yaml:"log"`
+	FifoPath               string `yaml:"fifo"`
+	CleanTempServicesAfter string `yaml:"clean_temp_services_after"`
 }
 
 // Load reads the config file and populates the global conf. It also handles
@@ -127,7 +140,19 @@ func Load(isServer bool) error {
 		}
 	}
 
-	log.Debug("Config file loaded", "LogPath", LogPath, "FifoPath", FifoPath)
+	if conf.CleanTempServicesAfter != "" {
+		dur, err := time.ParseDuration(conf.CleanTempServicesAfter)
+		if err != nil {
+			return fmt.Errorf("Invalid duration for cleaning temp services")
+		}
+		CleanTempServicesAfter = dur
+	}
+
+	log.Debug(
+		"Config file loaded",
+		"LogPath", LogPath,
+		"FifoPath", FifoPath,
+		"CleanTempServicesAfter", CleanTempServicesAfter)
 	return nil
 }
 
