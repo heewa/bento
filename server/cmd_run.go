@@ -55,8 +55,8 @@ func (s *Server) Run(args *RunArgs, reply *RunResponse) error {
 		return err
 	}
 
-	if !s.addService(serv, false) {
-		return fmt.Errorf("Service with name '%s' already exists", serv.Conf.Name)
+	if err := s.addService(serv, false); err != nil {
+		return fmt.Errorf("Failed to add service (%s): %v", conf.Name, err)
 	}
 
 	// Update after creating, but before changing its state

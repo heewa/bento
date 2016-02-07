@@ -2,9 +2,13 @@ package config
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/user"
+	"reflect"
 	"time"
+
+	"gopkg.in/yaml.v2"
 )
 
 // Service is the settings a service is made from
@@ -50,4 +54,44 @@ func (s *Service) Sanitize() error {
 	}
 
 	return nil
+}
+
+func (s *Service) EqualIgnoringTemp(s2 *Service) bool {
+	if s.Name != s2.Name || s.Program != s2.Program || s.Dir != s2.Dir {
+		return false
+	}
+
+	if !reflect.DeepEqual(s.Args, s2.Args) || !reflect.DeepEqual(s.Env, s2.Env) {
+		return false
+	}
+
+	return true
+}
+
+// LoadServiceFile reads a file for a list of service confs, sanitizing them
+// all
+func LoadServiceFile(path string) ([]Service, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to read service conf (%s): %v", path, err)
+	}
+	defer f.Close()
+
+	data, err := ioutil.ReadAll(f)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to read service conf (%s): %v", path, err)
+	}
+
+	var services []Service
+	if err := yaml.Unmarshal(data, &services); err == nil {
+		return nil, fmt.Errorf("Invalid service conf (%s): %v", path, err)
+	}
+
+	for _, service := range services {
+		if err := service.Sanitize(); err != nil {
+			return nil, fmt.Errorf("Bad service definition for name='%s': %v", service.Name, err)
+		}
+	}
+
+	return services, nil
 }

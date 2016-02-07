@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"net"
 	"net/rpc"
 	"os"
@@ -135,17 +136,19 @@ func (s *Server) listServices() []*service.Service {
 	return services
 }
 
-func (s *Server) addService(serv *service.Service, replace bool) bool {
+func (s *Server) addService(serv *service.Service, replace bool) error {
 	s.servicesLock.Lock()
 	defer s.servicesLock.Unlock()
 
-	if !replace && s.services[serv.Conf.Name] != nil {
-		return false
+	current := s.services[serv.Conf.Name]
+	if current != nil && !replace {
+		return fmt.Errorf("Service already exists (%s)", serv.Conf.Name)
+	} else if current != nil && current.Running() {
+		return fmt.Errorf("Can't replace a running service (%s)", serv.Conf.Name)
 	}
 
 	s.services[serv.Conf.Name] = serv
-
-	return true
+	return nil
 }
 
 func (s *Server) removeService(name string) error {
@@ -169,6 +172,26 @@ func (s *Server) removeService(name string) error {
 	s.serviceUpdates <- info
 
 	return nil
+}
+
+func (s *Server) changeServicePermanence(name string, temp bool, cleanAfter time.Duration) bool {
+	s.servicesLock.Lock()
+	defer s.servicesLock.Unlock()
+
+	srvc := s.services[name]
+	if srvc == nil {
+		return false
+	}
+
+	if temp {
+		srvc.Conf.Temp = true
+		srvc.Conf.CleanAfter = cleanAfter
+	} else {
+		srvc.Conf.Temp = false
+		srvc.Conf.CleanAfter = 0
+	}
+
+	return true
 }
 
 func (s *Server) watchServices() (chan<- service.Info, <-chan service.Info) {
