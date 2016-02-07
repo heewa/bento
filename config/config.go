@@ -14,8 +14,9 @@ import (
 )
 
 const (
-	configDir  = ".servicetray"
-	configFile = "config.yml"
+	configDir         = ".servicetray"
+	configFile        = "config.yml"
+	serviceConfigFile = "services.yml"
 
 	defaultConfig = `# Config for ServiceTray
 # See https://github.com/heewa/servicetray
@@ -40,8 +41,10 @@ const (
 )
 
 var (
-	// Services are defined in a file
-	Services []Service
+	// ServiceConfigFile is the full path to the config file that lists
+	// services to be read on server startup. If the path doesn't exist,
+	// this'll be empty.
+	ServiceConfigFile string
 
 	// LogLevel -
 	LogLevel = log.LvlWarn
@@ -149,6 +152,20 @@ func Load(isServer bool) error {
 			return fmt.Errorf("Invalid duration for cleaning temp services")
 		}
 		CleanTempServicesAfter = dur
+	}
+
+	// After conf file stuff is all handled, do config related to other stuff
+
+	// Set the path to services conf file only if it exists
+	path, err := getFullConfPath(serviceConfigFile)
+	if err != nil {
+		return fmt.Errorf("Failed to get path to services config file: %v", err)
+	}
+	_, err = os.Stat(path)
+	if err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("Failed to open services config file: %v", err)
+	} else if err == nil {
+		ServiceConfigFile = path
 	}
 
 	log.Debug(
