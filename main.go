@@ -26,6 +26,8 @@ var (
 	listRunning = listCmd.Arg("running", "List only running services").Bool()
 	listTemp    = listCmd.Arg("temp", "List only temp services").Bool()
 
+	reloadCmd = kingpin.Command("reload", "Reload services conf file")
+
 	runCmd        = kingpin.Command("run", "Run command as a new service")
 	runCleanAfter = runCmd.Flag("clean-after", "Remove service after it's finished running for this long. Overrides config value for this service.").Duration()
 	runWait       = runCmd.Flag("wait", "Wait for it exit").Bool()
@@ -68,9 +70,10 @@ var (
 	commandTable = map[string](func(*client.Client) error){
 		"shutdown": handleShutdown,
 
-		"list":  handleList,
-		"run":   handleRun,
-		"clean": handleClean,
+		"list":   handleList,
+		"reload": handleReload,
+		"run":    handleRun,
+		"clean":  handleClean,
 
 		"start": handleStart,
 		"stop":  handleStop,
@@ -168,6 +171,44 @@ func handleList(client *client.Client) error {
 
 	for _, serv := range services {
 		fmt.Println(serv)
+	}
+
+	return err
+}
+
+func handleReload(client *client.Client) error {
+	reply, err := client.LoadServices(config.ServiceConfigFile)
+
+	if len(reply.NewServices) > 0 {
+		fmt.Printf("Added %d new services:\n", len(reply.NewServices))
+		for _, srvc := range reply.NewServices {
+			fmt.Printf("    %s\n", srvc)
+		}
+		fmt.Println("")
+	}
+
+	if len(reply.UpdatedServices) > 0 {
+		fmt.Printf("Updated %d existing services:\n", len(reply.UpdatedServices))
+		for _, srvc := range reply.UpdatedServices {
+			fmt.Printf("    %s\n", srvc)
+		}
+		fmt.Println("")
+	}
+
+	if len(reply.DeprecatedServices) > 0 {
+		fmt.Printf("Marked %d running, but removed services for removal after exit:\n", len(reply.DeprecatedServices))
+		for _, srvc := range reply.DeprecatedServices {
+			fmt.Printf("    %s\n", srvc)
+		}
+		fmt.Println("")
+	}
+
+	if len(reply.RemovedServices) > 0 {
+		fmt.Printf("Removed %d services:\n", len(reply.RemovedServices))
+		for _, name := range reply.RemovedServices {
+			fmt.Printf("    %s\n", name)
+		}
+		fmt.Println("")
 	}
 
 	return err
