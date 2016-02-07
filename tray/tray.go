@@ -1,6 +1,7 @@
 package tray
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/getlantern/systray"
@@ -30,11 +31,11 @@ var (
 )
 
 // Init starts running the system tray. It's required before using this package
-func Init(serv *server.Server, serviceUpdates <-chan service.Info) {
+func Init() {
 	initOnce.Do(func() {
 		log.Info("Starting system tray")
 
-		srvr = serv
+		srvr = nil
 
 		ready := make(chan interface{})
 
@@ -56,19 +57,33 @@ func Init(serv *server.Server, serviceUpdates <-chan service.Info) {
 		})
 
 		<-ready
-
-		// Watch for service changes
-		go func() {
-			for {
-				info := <-serviceUpdates
-				if info.Dead {
-					RemoveService(info.Name)
-				} else {
-					SetService(info)
-				}
-			}
-		}()
 	})
+}
+
+// SetServer gives the Tray UI a reference to the server, and some channels for
+// the server to communicate with it. This is separated from Init so the UI can
+// start without a server, in case there's an error starting the server, the UI
+// will be able to display an error, instead of just not being initialized.
+func SetServer(serv *server.Server, serviceUpdates <-chan service.Info) error {
+	if srvr != nil {
+		return fmt.Errorf("Multiple calls to SetServer")
+	}
+
+	srvr = serv
+
+	// Watch for service changes
+	go func() {
+		for {
+			info := <-serviceUpdates
+			if info.Dead {
+				RemoveService(info.Name)
+			} else {
+				SetService(info)
+			}
+		}
+	}()
+
+	return nil
 }
 
 // Quit shuts down the tray and cleans up
