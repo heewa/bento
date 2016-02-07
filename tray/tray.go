@@ -1,8 +1,6 @@
 package tray
 
 import (
-	"fmt"
-	"strings"
 	"sync"
 
 	"github.com/getlantern/systray"
@@ -30,36 +28,6 @@ var (
 	quitItem     *systray.MenuItem
 	deadItems    []*systray.MenuItem
 )
-
-// ServiceItem is a menu item for a Service
-type ServiceItem struct {
-	menu *systray.MenuItem
-	info service.Info
-}
-
-// Set updates with Service info
-func (item *ServiceItem) Set(info service.Info) {
-	item.info = info
-
-	// If it ran and failed, mention that in title
-	if !info.Running && info.Pid != 0 && !info.Succeeded {
-		item.menu.SetTitle(fmt.Sprintf("%s <failed>", info.Name))
-	} else {
-		item.menu.SetTitle(info.Name)
-	}
-
-	if info.Running {
-		item.menu.Check()
-	} else {
-		item.menu.Uncheck()
-	}
-
-	if len(info.Tail) > 0 {
-		item.menu.SetTooltip(strings.Join(info.Tail, "\n"))
-	} else {
-		item.menu.SetTooltip(info.String())
-	}
-}
 
 // Init starts running the system tray. It's required before using this package
 func Init(serv *server.Server, serviceUpdates <-chan service.Info) {
