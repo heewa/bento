@@ -13,11 +13,11 @@ import (
 
 // Service is the settings a service is made from
 type Service struct {
-	Name    string
-	Program string
-	Args    []string
-	Dir     string
-	Env     map[string]string
+	Name    string            `yaml:"name"`
+	Program string            `yaml:"program"`
+	Args    []string          `yaml:"args"`
+	Dir     string            `yaml:"dir"`
+	Env     map[string]string `yaml:"env"`
 
 	// Temp is true if this config isn't loaded from a file, created at runtime
 	Temp       bool
