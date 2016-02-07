@@ -136,19 +136,27 @@ func handleInit() error {
 	defer tray.Quit()
 
 	// Create a Server
-	server, serviceUpdates, err := server.New()
+	srvr, serviceUpdates, err := server.New()
 	if err != nil {
 		return err
 	}
 
 	// Hook Tray and Server together
-	if err := tray.SetServer(server, serviceUpdates); err != nil {
+	if err := tray.SetServer(srvr, serviceUpdates); err != nil {
 		return err
+	}
+
+	// Load services config
+	if config.ServiceConfigFile != "" {
+		reply := server.LoadServicesResponse{}
+		if err := srvr.LoadServices(server.LoadServicesArgs{config.ServiceConfigFile}, &reply); err != nil {
+			return err
+		}
 	}
 
 	// Finally start the server
 	var nothing bool
-	return server.Init(nothing, &nothing)
+	return srvr.Init(nothing, &nothing)
 }
 
 func handleShutdown(client *client.Client) error {
