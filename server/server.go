@@ -148,6 +148,10 @@ func (s *Server) addService(serv *service.Service, replace bool) error {
 	}
 
 	s.services[serv.Conf.Name] = serv
+
+	// Notify watchers
+	s.serviceUpdates <- serv.Info()
+
 	return nil
 }
 
