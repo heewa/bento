@@ -83,7 +83,7 @@ func LoadServiceFile(path string) ([]Service, error) {
 	}
 
 	var services []Service
-	if err := yaml.Unmarshal(data, &services); err == nil {
+	if err := yaml.Unmarshal(data, &services); err != nil {
 		return nil, fmt.Errorf("Invalid service conf (%s): %v", path, err)
 	}
 
