@@ -25,6 +25,7 @@ var (
 	srvr *server.Server
 
 	itemLock     sync.RWMutex
+	errorItem    *systray.MenuItem
 	serviceItems []ServiceItem
 	quitItem     *systray.MenuItem
 	deadItems    []*systray.MenuItem
@@ -74,7 +75,11 @@ func SetServer(serv *server.Server, serviceUpdates <-chan service.Info) error {
 	// Watch for service changes
 	go func() {
 		for {
-			info := <-serviceUpdates
+			info, ok := <-serviceUpdates
+			if !ok {
+				return
+			}
+
 			if info.Dead {
 				RemoveService(info.Name)
 			} else {
@@ -95,10 +100,14 @@ func Quit() {
 	itemLock.Lock()
 	defer itemLock.Unlock()
 
+	errorItem = nil
 	serviceItems = nil
 	quitItem = nil
 	deadItems = nil
+
 	srvr = nil
+
+	log.Info("Tray is done")
 }
 
 // SetService adds or updates a service to the tray
@@ -128,7 +137,12 @@ func SetService(info service.Info) {
 		quitItem.SetTooltip(quitTooltip)
 	} else {
 		quitItem = systray.AddMenuItem(quitTitle, quitTooltip)
-		go handleClick(quitItem.ClickedCh, len(serviceItems))
+
+		index := len(serviceItems)
+		if errorItem != nil {
+			index++
+		}
+		go handleClick(quitItem.ClickedCh, index)
 	}
 }
 
@@ -178,15 +192,48 @@ func RemoveService(name string) {
 	serviceItems = serviceItems[:lastIndex]
 }
 
+func handleQuit() {
+	log.Debug("Clicked on quit")
+
+	if srvr == nil {
+		// Never had a chance to start server, so just quit tray
+		go Quit()
+	} else {
+		var nothing bool
+		if err := srvr.Exit(nothing, &nothing); err != nil {
+			log.Error("Failed to exit server", "err", err)
+
+			// Since server won't be exitting and quitting the
+			// tray, do that ourselves
+			go Quit()
+		}
+	}
+}
+
 // Since items change roles over time, look up logical item at each click
 func handleClick(click <-chan interface{}, index int) {
+	// Handle early returns when holding lock
+	itemLock.RLock()
+	defer itemLock.RUnlock()
+
 	for {
+		itemLock.RUnlock()
 		<-click
 		log.Debug("Click on menu item", "index", index)
+		itemLock.RLock()
 
-		func() {
-			itemLock.RLock()
-			defer itemLock.RUnlock()
+		if index == 0 && errorItem != nil {
+			// Click on error, need to clear it, but that thing needs the
+			// lock we're holding, so go it in a goroutine that'll unblock
+			// after we're done.
+			go ClearError()
+		} else {
+			// To make indexing into serviceItems easier, handle conditional
+			// errorItem by fixing up index
+			index := index
+			if errorItem != nil {
+				index--
+			}
 
 			if index < len(serviceItems) {
 				item := serviceItems[index]
@@ -205,15 +252,9 @@ func handleClick(click <-chan interface{}, index int) {
 					go SetService(reply.Info)
 				}
 			} else if index == len(serviceItems) {
-				// Quit
-				var nothing bool
-				if err := srvr.Exit(nothing, &nothing); err != nil {
-					// Log, and communicate with user through menu
-					log.Error("Failed to exit server", "err", err)
-					quitItem.SetTitle("Quit -- ERR, use cmdline")
-					quitItem.SetTooltip(err.Error())
-				}
+				go handleQuit()
+				return
 			} // else it's a dead item, ignore
-		}()
+		}
 	}
 }

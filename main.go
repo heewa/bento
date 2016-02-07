@@ -131,24 +131,18 @@ func main() {
 // handleInit is the main entry point into the UI & server backends. This is how
 // the app really "starts" up.
 func handleInit() error {
-	// Because the app needs to (usually) start without user explicitly driving
-	// it, like on user login, we need to start the UI portion first, so if
-	// there are any problems, the user can be notified.
+	// Start the UI
 	tray.Init()
 	defer tray.Quit()
 
-	// Start the server, so even if the services config fails to load, the
-	// app is still usable.
-	// TODO: take an errors channel for the tray
+	// Create a Server
 	server, serviceUpdates, err := server.New()
 	if err != nil {
-		// TODO: send error to Tray
 		return err
 	}
 
 	// Hook Tray and Server together
 	if err := tray.SetServer(server, serviceUpdates); err != nil {
-		// TODO: send error to Tray
 		return err
 	}
 

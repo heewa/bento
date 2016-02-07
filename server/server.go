@@ -202,6 +202,11 @@ func (s *Server) watchServices() (chan<- service.Info, <-chan service.Info) {
 	updatesOut := make(chan service.Info, 100)
 
 	go func() {
+		// Clean up channels
+		defer func() {
+			close(updatesOut)
+		}()
+
 		deathWatcherCancels := make(map[string]chan interface{})
 
 		for {
