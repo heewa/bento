@@ -88,12 +88,12 @@ func main() {
 	cmd := kingpin.Parse()
 
 	// Set up logging twice, cuz conf might change it, but it also logs
-	setupLogging(cmd)
+	setupLogging(cmd == "init", "-")
 	if err := config.Load(cmd == "init"); err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
 	}
-	setupLogging(cmd)
+	setupLogging(cmd == "init", config.LogPath)
 
 	// All other command besides init require a connection to the server
 	if cmd == "init" {
@@ -332,12 +332,12 @@ func handlePid(client *client.Client) error {
 	return err
 }
 
-func setupLogging(cmd string) {
+func setupLogging(isServer bool, logPath string) {
 	// Set client's logging to stdout, and server's if no path, or path of '-'
 	logHandler := log.StdoutHandler
-	if cmd == "init" && config.LogPath != "" && config.LogPath != "-" {
+	if isServer && logPath != "" && logPath != "-" {
 		var err error
-		logHandler, err = log.FileHandler(config.LogPath, log.LogfmtFormat())
+		logHandler, err = log.FileHandler(logPath, log.LogfmtFormat())
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err.Error())
 			os.Exit(1)
