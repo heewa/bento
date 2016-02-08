@@ -23,8 +23,9 @@ var (
 	// Commands on nothing
 
 	listCmd     = kingpin.Command("list", "List services")
-	listRunning = listCmd.Arg("running", "List only running services").Bool()
-	listTemp    = listCmd.Arg("temp", "List only temp services").Bool()
+	listRunning = listCmd.Flag("running", "List only running services").Bool()
+	listTemp    = listCmd.Flag("temp", "List only temp services").Bool()
+	listLong    = listCmd.Flag("long", "List more info").Short('l').Bool()
 
 	reloadCmd = kingpin.Command("reload", "Reload services conf file")
 
@@ -170,7 +171,11 @@ func handleList(client *client.Client) error {
 	services, err := client.List(*listRunning, *listTemp)
 
 	for _, serv := range services {
-		fmt.Println(serv)
+		if *listLong {
+			fmt.Println(serv.LongString())
+		} else {
+			fmt.Println(serv)
+		}
 	}
 
 	return err

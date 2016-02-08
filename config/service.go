@@ -13,15 +13,23 @@ import (
 
 // Service is the settings a service is made from
 type Service struct {
-	Name    string            `yaml:"name"`
-	Program string            `yaml:"program"`
-	Args    []string          `yaml:"args"`
-	Dir     string            `yaml:"dir"`
-	Env     map[string]string `yaml:"env"`
+	Name string `yaml:"name"`
+
+	// What to run
+	Program string   `yaml:"program"`
+	Args    []string `yaml:"args,omitempty"`
+
+	// Runtime env
+	Dir string            `yaml:"dir,omitempty"`
+	Env map[string]string `yaml:"env,omitempty"`
+
+	// Behavior
+	AutoStart     bool `yaml:"autostart,omitempty"`
+	RestartOnExit bool `yaml:"restart-on-exit,omitempty"`
 
 	// Temp is true if this config isn't loaded from a file, created at runtime
-	Temp       bool
-	CleanAfter time.Duration
+	Temp       bool          `yaml:",omitempty"`
+	CleanAfter time.Duration `yaml:",omitempty"`
 }
 
 // Sanitize checks a config for valitidy, and fixes up values that are dynamic

@@ -5,23 +5,26 @@ import (
 	"strings"
 	"time"
 
+	log "github.com/inconshreveable/log15"
+	"gopkg.in/yaml.v2"
+
 	"github.com/heewa/servicetray/config"
 )
 
 // Info holds info about a service
 type Info struct {
-	*config.Service
+	*config.Service `yaml:"config"`
 
-	Running   bool
-	Pid       int
-	Succeeded bool
-	Dead      bool
+	Running   bool `yaml:"running"`
+	Pid       int  `yaml:"pid,omitempty"`
+	Succeeded bool `yaml:"succeeded"`
+	Dead      bool `yaml:"dead,omitempty"`
 
-	StartTime time.Time
-	EndTime   time.Time
-	Runtime   time.Duration
+	StartTime time.Time     `yaml:"start-time,omitempty"`
+	EndTime   time.Time     `yaml:"end-time,omitempty"`
+	Runtime   time.Duration `yaml:"run-time,omitempty"`
 
-	Tail []string
+	Tail []string `yaml:"tail,omitempty"`
 }
 
 // String gets a user friendly string about a service.
@@ -56,4 +59,15 @@ func (i Info) String() string {
 	return fmt.Sprintf(
 		"[%s] %s cmd:'%s' dir:%s env:%v",
 		i.Name, state, cmd, i.Dir, i.Env)
+}
+
+// LongString gets a more detailed description of a service
+func (i Info) LongString() string {
+	bytes, err := yaml.Marshal(i)
+	if err != nil {
+		log.Error("Failed to encode Info as yaml", "err", err, "info", i)
+		return i.String()
+	}
+
+	return string(bytes)
 }
