@@ -51,14 +51,25 @@ func (i Info) String() string {
 			i.StartTime.Format(time.UnixDate))
 	}
 
+	var behaviors []string
+	if i.AutoStart {
+		behaviors = append(behaviors, "(auto-start) ")
+	}
+	if i.RestartOnExit {
+		behaviors = append(behaviors, "(restart-on-exit) ")
+	}
+
 	cmd := i.Program
 	if len(i.Args) > 0 {
 		cmd = fmt.Sprintf("%s %s", i.Program, strings.Join(i.Args, " "))
 	}
 
 	return fmt.Sprintf(
-		"[%s] %s cmd:'%s' dir:%s env:%v",
-		i.Name, state, cmd, i.Dir, i.Env)
+		"[%s] %s %scmd:'%s' dir:%s env:%v",
+		i.Name,
+		state,
+		strings.Join(behaviors, ""),
+		cmd, i.Dir, i.Env)
 }
 
 // LongString gets a more detailed description of a service

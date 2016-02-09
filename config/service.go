@@ -24,7 +24,7 @@ type Service struct {
 	Env map[string]string `yaml:"env,omitempty"`
 
 	// Behavior
-	AutoStart     bool `yaml:"autostart,omitempty"`
+	AutoStart     bool `yaml:"auto-start,omitempty"`
 	RestartOnExit bool `yaml:"restart-on-exit,omitempty"`
 
 	// Temp is true if this config isn't loaded from a file, created at runtime
