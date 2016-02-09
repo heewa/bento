@@ -38,7 +38,6 @@ func (c *Client) Connect() error {
 
 	// Wait a bit for the service to start, but not forever. Since net calls
 	// block, do it in a goroutine for correct timeout behavior
-	timeout := time.After(5 * time.Second)
 	clientChan := make(chan *rpc.Client)
 
 	log.Debug("Connecting to server")
@@ -78,22 +77,37 @@ func (c *Client) Connect() error {
 		}
 		stderr := bufio.NewScanner(stderrPipe)
 
-		go func() {
-			for {
-				if stdout.Scan() {
-					log.Debug("Server Log", "line", stdout.Text())
-				} else if stderr.Scan() {
-					log.Debug("Server Error", "line", stderr.Text())
-				} else {
-					break
-				}
-			}
-		}()
-
 		if err := cmd.Start(); err != nil {
 			log.Error("Failed to start server", "err", err)
 			clientChan <- nil
+			return
 		}
+
+		go func() {
+			outDone := make(chan interface{})
+
+			go func() {
+				for stdout.Scan() {
+					fmt.Println("Server: " + stdout.Text())
+				}
+				outDone <- struct{}{}
+			}()
+
+			go func() {
+				for stderr.Scan() {
+					fmt.Fprintln(os.Stderr, "Server: "+stderr.Text())
+				}
+				outDone <- struct{}{}
+			}()
+
+			// If stdout/stderr are done, server exitted
+			<-outDone
+			<-outDone
+			cmd.Wait()
+
+			clientChan <- nil
+			return
+		}()
 
 		// Keep trying to connect, it might take some time
 		for {
@@ -113,12 +127,15 @@ func (c *Client) Connect() error {
 
 	select {
 	case client := <-clientChan:
-		c.client = client
-		return nil
-	case <-timeout:
+		if client != nil {
+			c.client = client
+			return nil
+		}
+	case <-time.After(5 * time.Second):
+		return fmt.Errorf("Failed to connect to server: timed out")
 	}
 
-	return fmt.Errorf("Failed to connect to client: timed out")
+	return fmt.Errorf("Failed to connect to server")
 }
 
 // Close will end the RPC connection

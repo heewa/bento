@@ -110,15 +110,7 @@ func main() {
 		exitOnErr(err)
 		defer clnt.Close()
 
-		if err := clnt.Connect(); err != nil {
-			// Try to be helpful with the message. If fifo exists and we still
-			// couldn't connect, maybe the server died before cleaning it up.
-			if _, err = os.Stat(config.FifoPath); err == nil {
-				err = fmt.Errorf("Failed to connect to server: timed out. It's possible the server died before cleaning up. Try removing %s and trying again", config.FifoPath)
-			}
-			fmt.Fprintln(os.Stderr, err.Error())
-			os.Exit(1)
-		}
+		exitOnErr(clnt.Connect())
 
 		if fn, ok := commandTable[cmd]; !ok {
 			fmt.Fprintf(os.Stderr, "Unknown command: %s\n", cmd)
@@ -356,17 +348,10 @@ func setupLogging(isServer bool, logPath string) error {
 	logHandler := log.StdoutHandler
 	if isServer && logPath != "" && logPath != "-" {
 		var err error
-
-		// Handle file ourselves, so we can send both logs and stdout/stderr
-		// to the same log file
-		f, err := os.OpenFile(logPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+		logHandler, err = log.FileHandler(logPath, log.LogfmtFormat())
 		if err != nil {
 			return err
 		}
-
-		logHandler = log.StreamHandler(f, log.LogfmtFormat())
-		os.Stdout = f
-		os.Stderr = f
 	}
 
 	log.Root().SetHandler(
