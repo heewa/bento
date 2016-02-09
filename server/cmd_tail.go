@@ -2,6 +2,8 @@ package server
 
 import (
 	"fmt"
+
+	log "github.com/inconshreveable/log15"
 )
 
 // TailArgs -
@@ -32,7 +34,14 @@ type TailResponse struct {
 }
 
 // Tail gets lines of output since a line index for stdout and/or stderr
-func (s *Server) Tail(args *TailArgs, reply *TailResponse) error {
+func (s *Server) Tail(args *TailArgs, reply *TailResponse) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Crit("panic", "msg", r)
+			err = fmt.Errorf("Server error: %v", r)
+		}
+	}()
+
 	serv := s.getService(args.Name)
 	if serv == nil {
 		return fmt.Errorf("Service '%s' not found.", args.Name)

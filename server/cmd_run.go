@@ -11,7 +11,7 @@ import (
 	"github.com/heewa/servicetray/service"
 )
 
-// RunArgs are arguments to the Run cmd
+// RunArgs -
 type RunArgs struct {
 	Name       string
 	Program    string
@@ -21,13 +21,20 @@ type RunArgs struct {
 	CleanAfter time.Duration
 }
 
-// RunResponse is the response from the Run cmd
+// RunResponse -
 type RunResponse struct {
 	Service service.Info
 }
 
 // Run will start a new, temp service
-func (s *Server) Run(args *RunArgs, reply *RunResponse) error {
+func (s *Server) Run(args *RunArgs, reply *RunResponse) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Crit("panic", "msg", r)
+			err = fmt.Errorf("Server error: %v", r)
+		}
+	}()
+
 	if args.Name == "" {
 		// Name it after the program, but avoid collisions by checking
 		args.Name = filepath.Base(args.Program)

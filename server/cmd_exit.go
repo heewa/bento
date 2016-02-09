@@ -1,13 +1,21 @@
 package server
 
 import (
+	"fmt"
 	"net"
 
 	log "github.com/inconshreveable/log15"
 )
 
 // Exit casues server to exit
-func (s *Server) Exit(_ bool, _ *bool) error {
+func (s *Server) Exit(_ bool, _ *bool) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Crit("panic", "msg", r)
+			err = fmt.Errorf("Server error: %v", r)
+		}
+	}()
+
 	log.Info("Exiting server")
 	select {
 	case s.stop <- struct{}{}:
@@ -16,9 +24,10 @@ func (s *Server) Exit(_ bool, _ *bool) error {
 	}
 
 	log.Debug("Connecting to server to break out of listen loop")
-	conn, err := net.DialUnix("unix", nil, s.fifoAddr)
+	var conn *net.UnixConn
+	conn, err = net.DialUnix("unix", nil, s.fifoAddr)
 	if err != nil {
-		return err
+		return
 	}
 
 	// Do this in a goroutine so we can reply to RPC call before exiting
@@ -27,5 +36,5 @@ func (s *Server) Exit(_ bool, _ *bool) error {
 		log.Debug("Connected and closed")
 	}()
 
-	return nil
+	return
 }

@@ -10,25 +10,33 @@ import (
 	"github.com/heewa/servicetray/service"
 )
 
-// CleanArgs are arguments to the Clean cmd
+// CleanArgs -
 type CleanArgs struct {
 	NamePattern string
 	Age         time.Duration
 }
 
+// RemoveFailure -
 type RemoveFailure struct {
 	Service service.Info
 	Err     string
 }
 
-// CleanResponse is the response from the Clean cmd
+// CleanResponse -
 type CleanResponse struct {
 	Cleaned []service.Info
 	Failed  []RemoveFailure
 }
 
 // Clean will start a new, temp service
-func (s *Server) Clean(args CleanArgs, reply *CleanResponse) error {
+func (s *Server) Clean(args CleanArgs, reply *CleanResponse) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Crit("panic", "msg", r)
+			err = fmt.Errorf("Server error: %v", r)
+		}
+	}()
+
 	now := time.Now()
 
 	// Precheck pattern

@@ -19,7 +19,14 @@ type StopResponse struct {
 }
 
 // Stop stops a service, if it's running
-func (s *Server) Stop(args StopArgs, reply *StopResponse) error {
+func (s *Server) Stop(args StopArgs, reply *StopResponse) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Crit("panic", "msg", r)
+			err = fmt.Errorf("Server error: %v", r)
+		}
+	}()
+
 	serv := s.getService(args.Name)
 	if serv == nil {
 		return fmt.Errorf("Service '%s' not found.", args.Name)
@@ -33,7 +40,7 @@ func (s *Server) Stop(args StopArgs, reply *StopResponse) error {
 	}
 
 	log.Info("Stopping service", "service", serv.Conf.Name)
-	err := serv.Stop()
+	err = serv.Stop()
 
 	// Set info regarless of error
 	if reply != nil {

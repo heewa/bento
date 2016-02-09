@@ -10,12 +10,12 @@ import (
 	"github.com/heewa/servicetray/service"
 )
 
-// LoadServicesArgs are arguments to the LoadServices cmd
+// LoadServicesArgs -
 type LoadServicesArgs struct {
 	ServiceFilePath string
 }
 
-// LoadServicesResponse is the response from the LoadServices cmd
+// LoadServicesResponse -
 type LoadServicesResponse struct {
 	NewServices        []service.Info
 	UpdatedServices    []service.Info
@@ -24,7 +24,14 @@ type LoadServicesResponse struct {
 }
 
 // LoadServices will start a new, temp service
-func (s *Server) LoadServices(args LoadServicesArgs, reply *LoadServicesResponse) error {
+func (s *Server) LoadServices(args LoadServicesArgs, reply *LoadServicesResponse) (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Crit("panic", "msg", r)
+			err = fmt.Errorf("Server error: %v", r)
+		}
+	}()
+
 	log.Info("Load services", "file", args.ServiceFilePath)
 	confs, err := config.LoadServiceFile(args.ServiceFilePath)
 	if err != nil {
