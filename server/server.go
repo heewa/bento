@@ -152,6 +152,12 @@ func (s *Server) addService(serv *service.Service, replace bool) error {
 	// Notify watchers
 	s.serviceUpdates <- serv.Info()
 
+	if serv.Conf.AutoStart {
+		if err := serv.Start(s.serviceUpdates); err != nil {
+			return fmt.Errorf("Failed to auto-start service (%s): %v", serv.Conf.Name, err)
+		}
+	}
+
 	return nil
 }
 
