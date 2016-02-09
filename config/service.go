@@ -1,6 +1,8 @@
 package config
 
 import (
+	"bytes"
+	"encoding/gob"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -64,16 +66,32 @@ func (s *Service) Sanitize() error {
 	return nil
 }
 
-func (s *Service) EqualIgnoringTemp(s2 *Service) bool {
-	if s.Name != s2.Name || s.Program != s2.Program || s.Dir != s2.Dir {
-		return false
+// EqualIgnoringSafeFields returns true if the service config equals another,
+// ignoring fields that can be safely changed on a running service.
+func (s *Service) EqualIgnoringSafeFields(s2 *Service) bool {
+	// Take a white-list approach, so future changes to the conf don't
+	// accidentally yield unsafe replacements if we forgot to change this
+	// fn.
+
+	// Copy a conf by encoding/decoding (closest I could find to a proper
+	// deep-copy).
+	var s2Copy Service
+	var buffer bytes.Buffer
+	if err := gob.NewEncoder(&buffer).Encode(s2); err != nil {
+		// The confs should be encodable, so this shouldn't happen.
+		panic(fmt.Sprintf("Failed to encode service config for comparrison: %v", err))
+	}
+	if err := gob.NewDecoder(&buffer).Decode(&s2Copy); err != nil {
+		panic(fmt.Sprintf("Failed to decode service config for comparrison: %v", err))
 	}
 
-	if !reflect.DeepEqual(s.Args, s2.Args) || !reflect.DeepEqual(s.Env, s2.Env) {
-		return false
-	}
+	// Clear white-list fields
+	s2Copy.AutoStart = s.AutoStart
+	s2Copy.RestartOnExit = s.RestartOnExit
+	s2Copy.Temp = s.Temp
+	s2Copy.CleanAfter = s.CleanAfter
 
-	return true
+	return reflect.DeepEqual(s, &s2Copy)
 }
 
 // LoadServiceFile reads a file for a list of service confs, sanitizing them

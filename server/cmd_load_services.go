@@ -37,34 +37,7 @@ func (s *Server) LoadServices(args LoadServicesArgs, reply *LoadServicesResponse
 	for _, conf := range confs {
 		confsToLoad[conf.Name] = &conf
 
-		if srvc := s.getService(conf.Name); srvc != nil && !reflect.DeepEqual(srvc.Conf, conf) {
-			log.Debug("Updating an existing service", "conf", conf)
-
-			if srvc.Conf.Temp && srvc.Running() {
-				// If conf is adding back a service that had earlier been
-				// marked as temp because of a removal from conf, and is now
-				// being restored, un-temp-ify it.
-				if srvc.Conf.EqualIgnoringTemp(&conf) {
-					if !s.changeServicePermanence(srvc.Conf.Name, false, 0) {
-						return fmt.Errorf("Failed to remove temporary status of a now-permanent service (%s)", srvc.Conf.Name)
-					}
-				} else {
-					return fmt.Errorf("Cannot add a service that has the same name as a running temp service (%s)", conf.Name)
-				}
-			} else {
-				// Replacing a changed service
-				newSrvc, err := service.New(conf)
-				if err != nil {
-					return fmt.Errorf("Failed to create a changed service (%s): %v", conf.Name, err)
-				}
-
-				if err := s.addService(newSrvc, true); err != nil {
-					return fmt.Errorf("Failed to add back a changed service (%s): %v", conf.Name, err)
-				}
-
-				reply.UpdatedServices = append(reply.UpdatedServices, newSrvc.Info())
-			}
-		} else if srvc == nil {
+		if srvc := s.getService(conf.Name); srvc == nil {
 			log.Debug("Adding a new service", "conf", conf)
 
 			newSrvc, err := service.New(conf)
@@ -78,6 +51,55 @@ func (s *Server) LoadServices(args LoadServicesArgs, reply *LoadServicesResponse
 			}
 
 			reply.NewServices = append(reply.NewServices, newSrvc.Info())
+		} else if reflect.DeepEqual(srvc.Conf, conf) {
+			// Unmodified service, ignore
+		} else if !srvc.Running() {
+			// Since it's not running, ignore issue of safe changes, and just
+			// replace it.
+			log.Debug("Replacing a changed service", "current", srvc.Conf, "new", conf)
+
+			newSrvc, err := service.New(conf)
+			if err != nil {
+				return fmt.Errorf("Failed to create a changed service (%s): %v", conf.Name, err)
+			}
+
+			if err := s.addService(newSrvc, true); err != nil {
+				return fmt.Errorf("Failed to add back a changed service (%s): %v", conf.Name, err)
+			}
+
+			reply.UpdatedServices = append(reply.UpdatedServices, newSrvc.Info())
+		} else if srvc.Conf.EqualIgnoringSafeFields(&conf) {
+			log.Debug("Updating an running service with safe changes", "curent", srvc.Conf, "new", conf)
+
+			// If conf is adding back a service that had earlier been
+			// marked as temp because of a removal from conf, and is now
+			// being restored, un-temp-ify it.
+			if srvc.Conf.Temp && !conf.Temp && !s.changeServicePermanence(srvc.Conf.Name, false, 0) {
+				return fmt.Errorf("Failed to remove temporary status of a now-permanent service (%s)", srvc.Conf.Name)
+			}
+
+			// Auto-start is safe to just set or clean on a conf of a service
+			// that's already running
+			srvc.Conf.AutoStart = conf.AutoStart
+
+			// Changing restart-on-exit requires some work, though
+			if !srvc.Conf.RestartOnExit && conf.RestartOnExit {
+				s.addServiceToRestartWatch(srvc)
+				srvc.Conf.RestartOnExit = true
+			} else if srvc.Conf.RestartOnExit && !conf.RestartOnExit {
+				s.removeServiceFromRestartWatch(srvc.Conf.Name)
+				srvc.Conf.RestartOnExit = false
+			}
+
+			// To be sure we didn't forget to add logic to set a safe field,
+			// check that all changes were made.
+			if !reflect.DeepEqual(srvc.Conf, conf) {
+				return fmt.Errorf("Failed to fully apply conf changes to service (%s)", srvc.Conf.Name)
+			}
+
+			reply.UpdatedServices = append(reply.UpdatedServices, srvc.Info())
+		} else {
+			return fmt.Errorf("Cannot apply these changes to a running service (%s)", conf.Name)
 		}
 	}
 

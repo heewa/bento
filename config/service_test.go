@@ -6,6 +6,8 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
+	"bytes"
+	"encoding/gob"
 	"time"
 )
 
@@ -72,6 +74,46 @@ var _ = Describe("Service", func() {
 					Expect(aService.Sanitize()).To(BeNil())
 					Expect(aService.CleanAfter).To(Equal(time.Duration(0)))
 				})
+			})
+		})
+	})
+
+	Describe("EqualIgnoringSafeFields()", func() {
+		// Clone of aService
+		var anotherService Service
+
+		BeforeEach(func() {
+			// Clone using gob encode/decode
+			var buffer bytes.Buffer
+			Expect(gob.NewEncoder(&buffer).Encode(aService)).To(BeNil())
+			Expect(gob.NewDecoder(&buffer).Decode(&anotherService)).To(BeNil())
+		})
+
+		Context("When completely equal", func() {
+			It("returns true", func() {
+				Expect(aService.EqualIgnoringSafeFields(&anotherService)).To(Equal(true))
+			})
+		})
+
+		Context("When unsafe fields are different", func() {
+			It("returns false", func() {
+				anotherService.Name = "DifferentService"
+				Expect(aService.EqualIgnoringSafeFields(&anotherService)).To(Equal(false))
+			})
+		})
+
+		Context("When safe & unsafe fields are different", func() {
+			It("returns false", func() {
+				anotherService.Name = "DifferentService"
+				anotherService.AutoStart = true
+				Expect(aService.EqualIgnoringSafeFields(&anotherService)).To(Equal(false))
+			})
+		})
+
+		Context("When only unsafe fields are different", func() {
+			It("returns true", func() {
+				anotherService.AutoStart = true
+				Expect(aService.EqualIgnoringSafeFields(&anotherService)).To(Equal(true))
 			})
 		})
 	})
