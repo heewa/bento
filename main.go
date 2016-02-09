@@ -150,17 +150,27 @@ func handleInit() error {
 		return err
 	}
 
+	// Start the server
+	errChan := make(chan error)
+	go func() {
+		errChan <- srvr.Init(false, nil)
+	}()
+
 	// Load services config
 	if config.ServiceConfigFile != "" {
 		reply := server.LoadServicesResponse{}
 		if err := srvr.LoadServices(server.LoadServicesArgs{config.ServiceConfigFile}, &reply); err != nil {
+			// Shut the server down before leaving
+			if shutdownErr := srvr.Exit(false, nil); shutdownErr != nil {
+				log.Error("Failed to shut down server", "err", shutdownErr)
+			}
+
 			return err
 		}
 	}
 
-	// Finally start the server
-	var nothing bool
-	return srvr.Init(nothing, &nothing)
+	// Block on server exit
+	return <-errChan
 }
 
 func handleShutdown(client *client.Client) error {
