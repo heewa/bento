@@ -21,7 +21,7 @@ const (
 	defaultConfig = `# Config for ServiceTray
 # See https://github.com/heewa/servicetray
 
-# Set 'log' to a path for the server to log there. 
+# Set 'log' to a path for the server to log there.
 #log: "/path/to/servicetray.log"
 
 # Log Level can be "crit", "error", "warn", "info", or "debug"
@@ -56,11 +56,8 @@ var (
 	// between clients & the server.
 	FifoPath = ".fifo"
 
-	// HeartbeatPath is the path to a file that's touched periodically to
-	// indicate a server is active & using the fifo.
-	HeartbeatPath = ".heartbeat"
-
-	// HeartbeatInterval is the frequency that the heartbeat file is touched.
+	// HeartbeatInterval is the frequency that the fifo file is touched to
+	// indicate a live server.
 	HeartbeatInterval = 10 * time.Second
 
 	// CleanTempServicesAfter is the interval after which an exitted temp
@@ -78,7 +75,6 @@ type ConfFormat struct {
 	LogLevel               string `yaml:"log_level"`
 	LogPath                string `yaml:"log"`
 	FifoPath               string `yaml:"fifo"`
-	HeartbeatPath          string `yaml:"heartbeat"`
 	CleanTempServicesAfter string `yaml:"clean_temp_services_after"`
 }
 
@@ -153,14 +149,6 @@ func Load(isServer bool) error {
 	} else {
 		if FifoPath, err = getFullConfPath(FifoPath); err != nil {
 			return fmt.Errorf("Failed to build fifo file path: %v", err)
-		}
-	}
-
-	if conf.HeartbeatPath != "" {
-		HeartbeatPath = conf.HeartbeatPath
-	} else {
-		if HeartbeatPath, err = getFullConfPath(HeartbeatPath); err != nil {
-			return fmt.Errorf("Failed to build heartbeat file path: %v", err)
 		}
 	}
 
