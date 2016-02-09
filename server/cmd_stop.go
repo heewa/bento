@@ -25,6 +25,13 @@ func (s *Server) Stop(args StopArgs, reply *StopResponse) error {
 		return fmt.Errorf("Service '%s' not found.", args.Name)
 	}
 
+	// Before stopping, if it's being restart-watched, remove that so we
+	// don't auto-restart it. Not just temporarily, this stop is a user's
+	// request, so leave it un-watched until another start.
+	if serv.Conf.RestartOnExit {
+		s.removeServiceFromRestartWatch(serv.Conf.Name)
+	}
+
 	log.Info("Stopping service", "service", serv.Conf.Name)
 	err := serv.Stop()
 

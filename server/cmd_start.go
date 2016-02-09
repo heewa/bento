@@ -28,6 +28,11 @@ func (s *Server) Start(args StartArgs, reply *StartResponse) error {
 	log.Info("Starting service", "service", serv.Conf.Name)
 	err := serv.Start(s.serviceUpdates)
 
+	// If started, and it's supposed to be watched, add to watchlist
+	if err == nil && serv.Conf.RestartOnExit {
+		s.addServiceToRestartWatch(serv)
+	}
+
 	// Set info regardless of error
 	if reply != nil {
 		reply.Info = serv.Info()

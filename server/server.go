@@ -16,6 +16,11 @@ import (
 	"github.com/heewa/servicetray/service"
 )
 
+const (
+	minRestartPause = 500 * time.Millisecond
+	maxRestartPause = 1 * time.Minute
+)
+
 // Server is the backend that manages services
 type Server struct {
 	fifoAddr *net.UnixAddr
@@ -24,6 +29,11 @@ type Server struct {
 	servicesLock sync.RWMutex
 
 	serviceUpdates chan<- service.Info
+
+	// watchedServices is a collection of restart-watched services as a map
+	// from their name to a chanel that can be used to cancel the watch
+	watchLock       sync.RWMutex
+	watchedServices map[string]chan interface{}
 
 	stop chan interface{}
 }
@@ -42,9 +52,10 @@ func New() (*Server, <-chan service.Info, error) {
 	stop := make(chan interface{}, 1)
 
 	serv := &Server{
-		fifoAddr: addr,
-		services: make(map[string]*service.Service),
-		stop:     stop,
+		fifoAddr:        addr,
+		services:        make(map[string]*service.Service),
+		watchedServices: make(map[string]chan interface{}),
+		stop:            stop,
 	}
 
 	// Communicate with UI about service changes through a channel
@@ -160,9 +171,11 @@ func (s *Server) addService(serv *service.Service, replace bool) error {
 	s.serviceUpdates <- serv.Info()
 
 	if serv.Conf.AutoStart {
-		if err := serv.Start(s.serviceUpdates); err != nil {
-			return fmt.Errorf("Failed to auto-start service (%s): %v", serv.Conf.Name, err)
-		}
+		go func() {
+			if err := s.Start(StartArgs{serv.Conf.Name}, nil); err != nil {
+				log.Warn("Failed to auto-start service", "service", serv.Conf.Name, "err", err)
+			}
+		}()
 	}
 
 	return nil
@@ -211,6 +224,71 @@ func (s *Server) changeServicePermanence(name string, temp bool, cleanAfter time
 	return true
 }
 
+func (s *Server) addServiceToRestartWatch(srvc *service.Service) {
+	log.Info("Adding service to restart-watch list", "service", srvc.Conf.Name)
+
+	s.watchLock.Lock()
+	defer s.watchLock.Unlock()
+
+	// Remove it if it's there already
+	if cancel := s.watchedServices[srvc.Conf.Name]; cancel != nil {
+		close(cancel)
+	}
+
+	cancel := make(chan interface{})
+	s.watchedServices[srvc.Conf.Name] = cancel
+
+	go func() {
+		pauseTime := minRestartPause
+
+		for {
+			select {
+			case <-cancel:
+				return
+			case <-time.After(maxRestartPause):
+				// It's been running for a bit, so reset pauseTime
+				log.Debug("Resetting restart pause", "service", srvc.Conf.Name)
+				pauseTime = minRestartPause
+			case <-srvc.GetExitChan():
+				// Start the service again, after a pause
+				select {
+				case <-cancel:
+				case <-srvc.GetStartChan():
+					// Don't bother if it was started during the pause
+				case <-time.After(pauseTime):
+					pauseTime *= 2
+					if pauseTime > maxRestartPause {
+						pauseTime = maxRestartPause
+					}
+
+					if err := srvc.Start(s.serviceUpdates); err != nil {
+						log.Warn("Failed to restart service", "service", srvc.Conf.Name, "pause-before-next-restart", pauseTime, "err", err)
+					} else {
+						log.Debug("Restarted service", "service", srvc.Conf.Name)
+					}
+				}
+			}
+		}
+
+		log.Debug("Ending restart-watch for service", "service", srvc.Conf.Name)
+	}()
+}
+
+func (s *Server) removeServiceFromRestartWatch(name string) {
+	log.Info("Removing service from restart-watch list", "service", name)
+
+	s.watchLock.Lock()
+	defer s.watchLock.Unlock()
+
+	if cancel := s.watchedServices[name]; cancel != nil {
+		close(cancel)
+	}
+
+	delete(s.watchedServices, name)
+}
+
+// watchServices handles cleaning up temp services when they exit
+// TODO: refactor this to be like the restart watch
 func (s *Server) watchServices() (chan<- service.Info, <-chan service.Info) {
 	// TODO: this whole thing should just be based on an event model, pub-sub
 	// or some shit.
