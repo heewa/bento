@@ -31,11 +31,11 @@ var (
 
 	runCmd        = kingpin.Command("run", "Run command as a new service")
 	runCleanAfter = runCmd.Flag("clean-after", "Remove service after it's finished running for this long. Overrides config value for this service.").Duration()
-	runWait       = runCmd.Flag("wait", "Wait for it exit").Bool()
 	runName       = runCmd.Flag("name", "Set a name for the service").String()
 	runDir        = runCmd.Flag("dir", "Directory to run the service from").ExistingDir()
 	runEnv        = runCmd.Flag("env", "Env vars to pass on to service").StringMap()
 	runProg       = runCmd.Arg("program", "Program to run").Required().String()
+	runTail       = runCmd.Flag("tail", "Tail output after starting the service").Bool()
 	runArgs       = runCmd.Arg("args", "Args to pass to program, with -- prefix to prevent args from being processed here").Strings()
 
 	cleanCmd     = kingpin.Command("clean", "Remove one or multiple stopped temporary services")
@@ -45,9 +45,11 @@ var (
 	// Service commands
 
 	startCmd     = kingpin.Command("start", "Start an existing service")
+	startTail    = startCmd.Flag("tail", "Tail output after starting the service").Bool()
 	startService = startCmd.Arg("service", "Service to start").Required().String()
 
 	stopCmd     = kingpin.Command("stop", "Stop a running service")
+	stopTail    = stopCmd.Flag("tail", "Tail output of the service while stopping").Bool()
 	stopService = stopCmd.Arg("service", "Service to stop").Required().String()
 
 	tailCmd            = kingpin.Command("tail", "Tail stdout and/or stderr of a service")
@@ -231,17 +233,12 @@ func handleReload(client *client.Client) error {
 
 func handleRun(client *client.Client) error {
 	info, err := client.Run(*runName, *runProg, *runArgs, *runDir, *runEnv, *runCleanAfter)
-	if err == nil && !*runWait {
+	if err == nil && !*runTail {
 		fmt.Println(info)
 	} else if err == nil {
-		info, err = client.Wait(info.Name)
-		if err == nil {
-			fmt.Println(info)
-			if info.Succeeded {
-				os.Exit(0)
-			}
-			os.Exit(1)
-		}
+		*tailService = info.Name
+		*tailFollow = true
+		err = handleTail(client)
 	}
 	return err
 }
@@ -270,11 +267,23 @@ func handleStart(client *client.Client) error {
 	info, err := client.Start(*startService)
 	if err == nil {
 		fmt.Println(info)
+
+		if *startTail {
+			*tailService = info.Name
+			*tailFollow = true
+			err = handleTail(client)
+		}
 	}
 	return err
 }
 
 func handleStop(client *client.Client) error {
+	if *stopTail {
+		*tailService = *stopService
+		*tailFollow = true
+		go handleTail(client)
+	}
+
 	info, err := client.Stop(*stopService)
 	if err == nil {
 		fmt.Println(info)
