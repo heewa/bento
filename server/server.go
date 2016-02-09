@@ -239,6 +239,9 @@ func (s *Server) addServiceToRestartWatch(srvc *service.Service) {
 	s.watchedServices[srvc.Conf.Name] = cancel
 
 	go func() {
+		defer func() {
+			log.Debug("Ending restart-watch for service", "service", srvc.Conf.Name)
+		}()
 		pauseTime := minRestartPause
 
 		for {
@@ -255,6 +258,7 @@ func (s *Server) addServiceToRestartWatch(srvc *service.Service) {
 				// Start the service again, after a pause
 				select {
 				case <-cancel:
+					return
 				case <-srvc.GetStartChan():
 					// Don't bother if it was started during the pause
 				case <-time.After(pauseTime):
@@ -272,7 +276,6 @@ func (s *Server) addServiceToRestartWatch(srvc *service.Service) {
 			}
 		}
 
-		log.Debug("Ending restart-watch for service", "service", srvc.Conf.Name)
 	}()
 }
 

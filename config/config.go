@@ -132,7 +132,7 @@ func Load(isServer bool) error {
 		LogPath = conf.LogPath
 	} else {
 		if LogPath, err = getFullConfPath("log"); err != nil {
-			return fmt.Errorf("Failed to build log file path", "err", err)
+			return fmt.Errorf("Failed to build log file path: %v", err)
 		}
 	}
 
@@ -142,7 +142,7 @@ func Load(isServer bool) error {
 		FifoPath = conf.FifoPath
 	} else {
 		if FifoPath, err = getFullConfPath(".fifo"); err != nil {
-			return fmt.Errorf("Failed to build fifo file path", "err", err)
+			return fmt.Errorf("Failed to build fifo file path: %v", err)
 		}
 	}
 

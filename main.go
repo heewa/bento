@@ -147,8 +147,11 @@ func handleInit() error {
 
 	// Load services config
 	if config.ServiceConfigFile != "" {
+		args := server.LoadServicesArgs{
+			ServiceFilePath: config.ServiceConfigFile,
+		}
 		reply := server.LoadServicesResponse{}
-		if err := srvr.LoadServices(server.LoadServicesArgs{config.ServiceConfigFile}, &reply); err != nil {
+		if err := srvr.LoadServices(args, &reply); err != nil {
 			// Shut the server down before leaving
 			if shutdownErr := srvr.Exit(false, nil); shutdownErr != nil {
 				log.Error("Failed to shut down server", "err", shutdownErr)

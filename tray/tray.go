@@ -240,13 +240,13 @@ func handleClick(click <-chan interface{}, index int) {
 
 				if item.menu.Checked() {
 					reply := server.StopResponse{}
-					if err := srvr.Stop(server.StopArgs{item.info.Name}, &reply); err != nil {
+					if err := srvr.Stop(server.StopArgs{Name: item.info.Name}, &reply); err != nil {
 						log.Warn("Failed to stop service", "service", item.info.Name, "err", err)
 					}
 					go SetService(reply.Info)
 				} else {
 					reply := server.StartResponse{}
-					if err := srvr.Start(server.StartArgs{item.info.Name}, &reply); err != nil {
+					if err := srvr.Start(server.StartArgs{Name: item.info.Name}, &reply); err != nil {
 						log.Warn("Failed to start service", "service", item.info.Name, "err", err)
 					}
 					go SetService(reply.Info)
