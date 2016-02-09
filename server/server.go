@@ -247,8 +247,10 @@ func (s *Server) addServiceToRestartWatch(srvc *service.Service) {
 				return
 			case <-time.After(maxRestartPause):
 				// It's been running for a bit, so reset pauseTime
-				log.Debug("Resetting restart pause", "service", srvc.Conf.Name)
-				pauseTime = minRestartPause
+				if pauseTime != minRestartPause {
+					log.Debug("Resetting restart pause", "service", srvc.Conf.Name)
+					pauseTime = minRestartPause
+				}
 			case <-srvc.GetExitChan():
 				// Start the service again, after a pause
 				select {
