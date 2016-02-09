@@ -197,7 +197,7 @@ func (s *Service) Stop() error {
 		select {
 		case <-s.exitChan:
 			return nil
-		case <-time.After(3 * time.Second):
+		case <-time.After(10 * time.Second):
 		}
 	}
 
