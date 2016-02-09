@@ -24,8 +24,9 @@ const (
 type Service struct {
 	Conf config.Service
 
-	// Closed when process exits, no need for lock to use.
-	exitChan chan interface{}
+	// Closed when process starts/exits, no need for lock to use.
+	startChan chan interface{}
+	exitChan  chan interface{}
 
 	// All these fields are locked by stateLock
 	stateLock sync.RWMutex
@@ -46,13 +47,16 @@ type Service struct {
 // New creates a new Service
 func New(conf config.Service) (*Service, error) {
 
-	// Start off with an existing, but closed exit chan
+	// Start off with existing start & exit chans, but since it's not running,
+	// exitChan should be closed, and startChan should be open.
 	exitChan := make(chan interface{})
 	close(exitChan)
+	startChan := make(chan interface{})
 
 	return &Service{
-		Conf:     conf,
-		exitChan: exitChan,
+		Conf:      conf,
+		startChan: startChan,
+		exitChan:  exitChan,
 	}, nil
 }
 
@@ -169,6 +173,8 @@ func (s *Service) Start(updates chan<- Info) error {
 
 	go s.watchForExit(cmd, updates, outputDone)
 
+	close(s.startChan)
+
 	return nil
 }
 
@@ -214,6 +220,10 @@ func (s *Service) Running() bool {
 	return true
 }
 
+// GetStartChan returns a channel that'll be closed once the service starts
+func (s *Service) GetStartChan() <-chan interface{} {
+	return s.startChan
+}
 
 // GetExitChan returns a channel that'll be closed once the service stops
 func (s *Service) GetExitChan() <-chan interface{} {
@@ -348,6 +358,9 @@ func (s *Service) watchForExit(cmd *exec.Cmd, updates chan<- Info, outputDone <-
 
 	s.endTime = time.Now()
 	s.state = cmd.ProcessState
+
+	// Open up startChan so it can be watched for closing
+	s.startChan = make(chan interface{})
 
 	// Close exit chan last cuz it signals other goroutines
 	close(s.exitChan)
