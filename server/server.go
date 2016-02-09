@@ -73,7 +73,7 @@ func (s *Server) Init(_ bool, _ *bool) error {
 	}
 
 	log.Info("Listening on fifo", "address", s.fifoAddr)
-	listener, err := net.ListenUnix("unix", s.fifoAddr)
+	listener, err := s.openFifo()
 	if err != nil {
 		return err
 	}
@@ -84,6 +84,13 @@ func (s *Server) Init(_ bool, _ *bool) error {
 			log.Info("Closed listener")
 		}
 	}()
+
+	// Maintain a heartbeat file, so other instances can recover from our
+	// crash/hang
+	cancelHeartbeat, err := s.startHeartbeat()
+	if err != nil {
+		return err
+	}
 
 	// Handle interrupt & kill signal, to try to clean up
 	go func() {
@@ -120,6 +127,8 @@ func (s *Server) Init(_ bool, _ *bool) error {
 			}
 		}
 	}
+
+	close(cancelHeartbeat)
 
 	// Stop all services
 	for _, srvc := range s.services {
@@ -350,4 +359,74 @@ func (s *Server) watchServices() (chan<- service.Info, <-chan service.Info) {
 	}()
 
 	return updatesIn, updatesOut
+}
+
+func (s *Server) openFifo() (*net.UnixListener, error) {
+	// Check the heartbeat first, that's a more well-maintained file
+	heartbeatInfo, err := os.Stat(config.HeartbeatPath)
+	if err != nil && !os.IsNotExist(err) {
+		return nil, err
+	} else if err == nil {
+		if time.Since(heartbeatInfo.ModTime()) < config.HeartbeatInterval*2 {
+			return nil, fmt.Errorf("There's an active server still running.")
+		}
+
+		log.Warn("Found a stale heartbeat file. Clearing it.")
+		if err := os.Remove(config.HeartbeatPath); err != nil {
+			return nil, err
+		}
+	}
+
+	// If we didn't abort already, the fifo file "shouldn't" exist, so if it
+	// does, we're free to clear and reuse it.
+	_, err = os.Stat(s.fifoAddr.String())
+	if err != nil && !os.IsNotExist(err) {
+		return nil, err
+	} else if err == nil {
+		log.Warn("Clearing stale fifo file.")
+		if err := os.Remove(s.fifoAddr.String()); err != nil {
+			return nil, err
+		}
+	}
+
+	listener, err := net.ListenUnix("unix", s.fifoAddr)
+	if err != nil {
+		return nil, err
+	}
+
+	return listener, nil
+}
+
+func (s *Server) startHeartbeat() (chan<- interface{}, error) {
+	cancel := make(chan interface{})
+
+	// Make a heartbeat file
+	f, err := os.Create(config.HeartbeatPath)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to make heartbeat file (%s): %v", config.HeartbeatPath, err)
+	}
+	f.Close()
+
+	go func() {
+		defer func() {
+			// Delete the heartbeat file on the way out
+			if err := os.Remove(config.HeartbeatPath); err != nil {
+				log.Error("Failed to remove heartbeat file", "path", config.HeartbeatPath, "err", err)
+			}
+		}()
+
+		for {
+			select {
+			case <-cancel:
+				return
+			case <-time.After(config.HeartbeatInterval):
+				now := time.Now()
+				if err := os.Chtimes(config.HeartbeatPath, now, now); err != nil {
+					log.Warn("Failed to update heartbeat", "err", err)
+				}
+			}
+		}
+	}()
+
+	return cancel, nil
 }

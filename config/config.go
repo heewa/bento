@@ -46,19 +46,28 @@ var (
 	// this'll be empty.
 	ServiceConfigFile string
 
-	// LogLevel -
+	// LogLevel determines the severity of messages that are logged.
 	LogLevel = log.LvlWarn
 
-	// LogPath -
+	// LogPath is the path to the server's log file.
 	LogPath = "servicetray.log"
 
-	// FifoPath -
+	// FifoPath is the path to a unix named pipe that's used to communicate
+	// between clients & the server.
 	FifoPath = ".fifo"
 
-	// CleanTempServicesAfter -
+	// HeartbeatPath is the path to a file that's touched periodically to
+	// indicate a server is active & using the fifo.
+	HeartbeatPath = ".heartbeat"
+
+	// HeartbeatInterval is the frequency that the heartbeat file is touched.
+	HeartbeatInterval = 10 * time.Second
+
+	// CleanTempServicesAfter is the interval after which an exitted temp
+	// service is removed.
 	CleanTempServicesAfter = 1 * time.Hour
 
-	// Cmdline args that override conf
+	// Cmdline args that override conf:
 	verbosity = kingpin.Flag("verbose", "Increase log verbosity, can be used multiple times").Short('v').Counter()
 	fifoPath  = kingpin.Flag("fifo", "Path to fifo used to communicate between client and server").String()
 	logPath   = kingpin.Flag("log", "Path to server's log file, or '-' for stdout").String()
@@ -69,6 +78,7 @@ type ConfFormat struct {
 	LogLevel               string `yaml:"log_level"`
 	LogPath                string `yaml:"log"`
 	FifoPath               string `yaml:"fifo"`
+	HeartbeatPath          string `yaml:"heartbeat"`
 	CleanTempServicesAfter string `yaml:"clean_temp_services_after"`
 }
 
@@ -141,8 +151,16 @@ func Load(isServer bool) error {
 	} else if conf.FifoPath != "" {
 		FifoPath = conf.FifoPath
 	} else {
-		if FifoPath, err = getFullConfPath(".fifo"); err != nil {
+		if FifoPath, err = getFullConfPath(FifoPath); err != nil {
 			return fmt.Errorf("Failed to build fifo file path: %v", err)
+		}
+	}
+
+	if conf.HeartbeatPath != "" {
+		HeartbeatPath = conf.HeartbeatPath
+	} else {
+		if HeartbeatPath, err = getFullConfPath(HeartbeatPath); err != nil {
+			return fmt.Errorf("Failed to build heartbeat file path: %v", err)
 		}
 	}
 
