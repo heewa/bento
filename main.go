@@ -87,29 +87,27 @@ var (
 	}
 )
 
+func exitOnErr(err error) {
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(1)
+	}
+}
+
 func main() {
 	cmd := kingpin.Parse()
 
 	// Set up logging twice, cuz conf might change it, but it also logs
-	setupLogging(cmd == "init", "-")
-	if err := config.Load(cmd == "init"); err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
-		os.Exit(1)
-	}
-	setupLogging(cmd == "init", config.LogPath)
+	exitOnErr(setupLogging(cmd == "init", "-"))
+	exitOnErr(config.Load(cmd == "init"))
+	exitOnErr(setupLogging(cmd == "init", config.LogPath))
 
 	// All other command besides init require a connection to the server
 	if cmd == "init" {
-		if err := handleInit(); err != nil {
-			fmt.Fprintln(os.Stderr, err.Error())
-			os.Exit(1)
-		}
+		exitOnErr(handleInit())
 	} else {
 		clnt, err := client.New()
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err.Error())
-			os.Exit(1)
-		}
+		exitOnErr(err)
 		defer clnt.Close()
 
 		if err := clnt.Connect(); err != nil {
@@ -126,10 +124,7 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Unknown command: %s\n", cmd)
 			os.Exit(1)
 		} else {
-			if err := fn(clnt); err != nil {
-				fmt.Fprintln(os.Stderr, err.Error())
-				os.Exit(1)
-			}
+			exitOnErr(fn(clnt))
 		}
 	}
 }
@@ -356,19 +351,27 @@ func handlePid(client *client.Client) error {
 	return err
 }
 
-func setupLogging(isServer bool, logPath string) {
+func setupLogging(isServer bool, logPath string) error {
 	// Set client's logging to stdout, and server's if no path, or path of '-'
 	logHandler := log.StdoutHandler
 	if isServer && logPath != "" && logPath != "-" {
 		var err error
-		logHandler, err = log.FileHandler(logPath, log.LogfmtFormat())
+
+		// Handle file ourselves, so we can send both logs and stdout/stderr
+		// to the same log file
+		f, err := os.OpenFile(logPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, err.Error())
-			os.Exit(1)
+			return err
 		}
+
+		logHandler = log.StreamHandler(f, log.LogfmtFormat())
+		os.Stdout = f
+		os.Stderr = f
 	}
 
 	log.Root().SetHandler(
 		log.LvlFilterHandler(config.LogLevel,
 			logHandler))
+
+	return nil
 }
