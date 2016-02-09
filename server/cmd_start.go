@@ -29,7 +29,9 @@ func (s *Server) Start(args StartArgs, reply *StartResponse) error {
 	err := serv.Start(s.serviceUpdates)
 
 	// Set info regardless of error
-	reply.Info = serv.Info()
+	if reply != nil {
+		reply.Info = serv.Info()
+	}
 
 	return err
 }
