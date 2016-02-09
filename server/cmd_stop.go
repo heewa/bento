@@ -29,7 +29,9 @@ func (s *Server) Stop(args StopArgs, reply *StopResponse) error {
 	err := serv.Stop()
 
 	// Set info regarless of error
-	reply.Info = serv.Info()
+	if reply != nil {
+		reply.Info = serv.Info()
+	}
 
 	return err
 }

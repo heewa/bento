@@ -110,6 +110,13 @@ func (s *Server) Init(_ bool, _ *bool) error {
 		}
 	}
 
+	// Stop all services
+	for _, srvc := range s.services {
+		if err := s.Stop(StopArgs{srvc.Conf.Name}, nil); err != nil {
+			log.Warn("Failed to stop service during shutdown", "service", srvc.Conf.Name, "err", err)
+		}
+	}
+
 	log.Info("All done")
 
 	return nil
