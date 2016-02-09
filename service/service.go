@@ -152,6 +152,7 @@ func (s *Service) Start(updates chan<- Info) error {
 	}
 	stderr := bufio.NewScanner(pipe)
 
+	// Now that all the setup completed without failure, start the process
 	if err := cmd.Start(); err != nil {
 		return err
 	}
@@ -159,54 +160,14 @@ func (s *Service) Start(updates chan<- Info) error {
 	s.exitChan = make(chan interface{})
 	s.process = cmd.Process
 
-	// Periodically send info about service, while it's running
-	go func() {
-		tick := time.Tick(3 * time.Second)
-		for {
-			select {
-			case <-s.exitChan:
-				return
-			case <-tick:
-				select {
-				case updates <- s.Info():
-				default:
-				}
-			}
-		}
-	}()
+	go s.sendPeriodicUpdates(updates)
 
-	go func() {
-		// Read from stdout/err & throw in a tail-array. Completely exhaust
-		// both before waiting for the cmd to exit, cuz Wait will close the
-		// pipes before we can read everything from them. Read each one
-		// separately in a goroutine so they don't block each other
-		done := make(chan interface{})
-		go s.watchOutput(stdout, &s.stdout, &s.stdoutShifts, done)
-		go s.watchOutput(stderr, &s.stderr, &s.stderrShifts, done)
-		<-done
-		<-done
+	// Read from stdout/err & throw in a tail-array.
+	outputDone := make(chan interface{})
+	go s.watchOutput(stdout, &s.stdout, &s.stdoutShifts, outputDone)
+	go s.watchOutput(stderr, &s.stderr, &s.stderrShifts, outputDone)
 
-		// Wait for exit
-		err := cmd.Wait()
-		log.Info("Service exited", "name", s.Conf.Name, "program", s.Conf.Program, "err", err)
-
-		// Update after we let go of lock
-		defer func() {
-			select {
-			case updates <- s.Info():
-			default:
-			}
-		}()
-
-		s.stateLock.Lock()
-		defer s.stateLock.Unlock()
-
-		s.endTime = time.Now()
-		s.state = cmd.ProcessState
-
-		// Close exit chan last cuz it signals other goroutines
-		close(s.exitChan)
-	}()
+	go s.watchForExit(cmd, updates, outputDone)
 
 	return nil
 }
@@ -286,6 +247,8 @@ func (s *Service) Stderr(pid, since, max int) (lines []string, newSince int, new
 	return getOutput(pid, since, s.Pid(), s.stderrShifts, max, s.stderr)
 }
 
+// Internal methods
+
 func (s *Service) signal(sig os.Signal) error {
 	s.stateLock.RLock()
 	defer s.stateLock.RUnlock()
@@ -300,37 +263,6 @@ func (s *Service) signal(sig os.Signal) error {
 	}
 
 	return nil
-}
-
-func (s *Service) watchOutput(out *bufio.Scanner, tail *[]string, shifts *int, done chan<- interface{}) {
-	size := 0
-
-	for out.Scan() {
-		s.outLock.Lock()
-
-		line := out.Text()
-
-		if len(s.shortTail) >= shortTailLen {
-			s.shortTail = append(s.shortTail[len(s.shortTail)-shortTailLen:], line)
-		} else {
-			s.shortTail = append(s.shortTail, line)
-		}
-
-		size += len(line)
-		*tail = append(*tail, line)
-
-		// Cut down by total size, cuz output could be a binary stream, and we
-		// care about size more than # lines anyway.
-		for len(*tail) > 1 && size > maxOutputSize {
-			size -= len((*tail)[0])
-			*tail = (*tail)[1:]
-			*shifts++
-		}
-
-		s.outLock.Unlock()
-	}
-
-	done <- struct{}{}
 }
 
 func getOutput(pid, since, currentPid, shifts, max int, outLines []string) ([]string, int, int) {
@@ -364,4 +296,85 @@ func getOutput(pid, since, currentPid, shifts, max int, outLines []string) ([]st
 	}
 
 	return lines, index + shifts + numLines, currentPid
+}
+
+// Internal goroutines - not regular helper fns
+
+// sendPeriodicUpdates will send info about service to listeners while it's running
+func (s *Service) sendPeriodicUpdates(updates chan<- Info) {
+	tick := time.Tick(3 * time.Second)
+	for {
+		select {
+		case <-s.exitChan:
+			return
+		case <-tick:
+			select {
+			case updates <- s.Info():
+			default:
+			}
+		}
+	}
+}
+
+// watchForExit will wait for both outputs to finish, then wait for the
+// process to end, before closing the exitChan to signal everyone else
+func (s *Service) watchForExit(cmd *exec.Cmd, updates chan<- Info, outputDone <-chan interface{}) {
+	// Completely exhaust both outputs before waiting for the cmd to exit,
+	// cuz Wait will close the pipes before we can read everything from
+	// them.
+	<-outputDone
+	<-outputDone
+
+	// Wait for exit
+	err := cmd.Wait()
+	log.Info("Service exited", "name", s.Conf.Name, "program", s.Conf.Program, "err", err)
+
+	// Update after we let go of lock
+	defer func() {
+		select {
+		case updates <- s.Info():
+		default:
+		}
+	}()
+
+	s.stateLock.Lock()
+	defer s.stateLock.Unlock()
+
+	s.endTime = time.Now()
+	s.state = cmd.ProcessState
+
+	// Close exit chan last cuz it signals other goroutines
+	close(s.exitChan)
+}
+
+// watchOutput reads from stdout or stderr & puts lines on a capped slice
+func (s *Service) watchOutput(out *bufio.Scanner, tail *[]string, shifts *int, done chan<- interface{}) {
+	size := 0
+
+	for out.Scan() {
+		s.outLock.Lock()
+
+		line := out.Text()
+
+		if len(s.shortTail) >= shortTailLen {
+			s.shortTail = append(s.shortTail[len(s.shortTail)-shortTailLen:], line)
+		} else {
+			s.shortTail = append(s.shortTail, line)
+		}
+
+		size += len(line)
+		*tail = append(*tail, line)
+
+		// Cut down by total size, cuz output could be a binary stream, and we
+		// care about size more than # lines anyway.
+		for len(*tail) > 1 && size > maxOutputSize {
+			size -= len((*tail)[0])
+			*tail = (*tail)[1:]
+			*shifts++
+		}
+
+		s.outLock.Unlock()
+	}
+
+	done <- struct{}{}
 }
