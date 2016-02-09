@@ -340,7 +340,7 @@ func handleWait(client *client.Client) error {
 }
 
 func handlePid(client *client.Client) error {
-	info, err := client.Info(*infoService)
+	info, err := client.Info(*pidService)
 	if err == nil {
 		fmt.Println(info.Pid)
 	}
