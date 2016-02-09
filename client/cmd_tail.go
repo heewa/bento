@@ -42,7 +42,7 @@ func (c *Client) Tail(name string, stdout, stderr bool, follow, followRestarts b
 			// reply as last time. Not sure why, some rpc quirk.
 			reply = server.TailResponse{}
 
-			if err := c.client.Call("Server.Tail", args, &reply); err != nil {
+			if err := c.Call("Server.Tail", args, &reply); err != nil {
 				errChan <- err
 				return
 			}

@@ -10,7 +10,7 @@ func (c *Client) LoadServices(serviceFilePath string) (server.LoadServicesRespon
 		ServiceFilePath: serviceFilePath,
 	}
 	reply := server.LoadServicesResponse{}
-	err := c.client.Call("Server.LoadServices", args, &reply)
+	err := c.Call("Server.LoadServices", args, &reply)
 
 	return reply, err
 }

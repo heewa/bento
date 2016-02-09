@@ -18,7 +18,7 @@ func (c *Client) Run(name, program string, runArgs []string, dir string, env map
 		CleanAfter: cleanAfter,
 	}
 	reply := server.RunResponse{}
-	err := c.client.Call("Server.Run", args, &reply)
+	err := c.Call("Server.Run", args, &reply)
 
 	return reply.Service, err
 }

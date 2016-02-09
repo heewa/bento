@@ -3,6 +3,7 @@ package client
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"net"
 	"net/rpc"
 	"os"
@@ -120,9 +121,21 @@ func (c *Client) Connect() error {
 	return fmt.Errorf("Failed to connect to client: timed out")
 }
 
+// Close will end the RPC connection
 func (c *Client) Close() {
 	if c.client != nil {
 		c.client.Close()
 		c.client = nil
 	}
+}
+
+// Call wraps a regular rpc.Call to give more user-friendly error messages in
+// some cases.
+func (c *Client) Call(method string, args interface{}, reply interface{}) error {
+	err := c.client.Call(method, args, reply)
+	if err == io.EOF || err == io.ErrUnexpectedEOF {
+		err = fmt.Errorf("Lost connection to backend server during a call to %s", method)
+	}
+
+	return err
 }

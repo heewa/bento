@@ -14,7 +14,7 @@ func (c *Client) Clean(pattern string, age time.Duration) ([]service.Info, []ser
 		Age:         age,
 	}
 	reply := server.CleanResponse{}
-	err := c.client.Call("Server.Clean", args, &reply)
+	err := c.Call("Server.Clean", args, &reply)
 
 	return reply.Cleaned, reply.Failed, err
 }

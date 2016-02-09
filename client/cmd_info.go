@@ -11,7 +11,7 @@ func (c *Client) Info(name string) (service.Info, error) {
 		Name: name,
 	}
 	reply := server.InfoResponse{}
-	err := c.client.Call("Server.Info", args, &reply)
+	err := c.Call("Server.Info", args, &reply)
 
 	return reply.Info, err
 }

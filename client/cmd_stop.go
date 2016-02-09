@@ -11,7 +11,7 @@ func (c *Client) Stop(name string) (service.Info, error) {
 		Name: name,
 	}
 	reply := server.StopResponse{}
-	err := c.client.Call("Server.Stop", args, &reply)
+	err := c.Call("Server.Stop", args, &reply)
 
 	return reply.Info, err
 }

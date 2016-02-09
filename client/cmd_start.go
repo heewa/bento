@@ -11,7 +11,7 @@ func (c *Client) Start(name string) (service.Info, error) {
 		Name: name,
 	}
 	reply := server.StartResponse{}
-	err := c.client.Call("Server.Start", args, &reply)
+	err := c.Call("Server.Start", args, &reply)
 
 	return reply.Info, err
 }

@@ -12,7 +12,7 @@ func (c *Client) List(running bool, temp bool) ([]service.Info, error) {
 		Temp:    temp,
 	}
 	reply := server.ListResponse{}
-	if err := c.client.Call("Server.List", args, &reply); err != nil {
+	if err := c.Call("Server.List", args, &reply); err != nil {
 		return nil, err
 	}
 

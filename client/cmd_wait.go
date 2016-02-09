@@ -11,7 +11,7 @@ func (c *Client) Wait(name string) (service.Info, error) {
 		Name: name,
 	}
 	reply := server.WaitResponse{}
-	err := c.client.Call("Server.Wait", args, &reply)
+	err := c.Call("Server.Wait", args, &reply)
 
 	return reply.Info, err
 }
