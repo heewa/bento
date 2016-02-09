@@ -214,6 +214,12 @@ func (s *Service) Running() bool {
 	return true
 }
 
+
+// GetExitChan returns a channel that'll be closed once the service stops
+func (s *Service) GetExitChan() <-chan interface{} {
+	return s.exitChan
+}
+
 // Pid gets the process id of a running or ended service.
 func (s *Service) Pid() int {
 	s.stateLock.RLock()
