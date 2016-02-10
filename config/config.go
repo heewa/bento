@@ -15,21 +15,21 @@ import (
 )
 
 const (
-	configDir         = ".servicetray"
+	configDir         = ".bento"
 	configFile        = "config.yml"
 	serviceConfigFile = "services.yml"
 
-	defaultConfig = `# Config for ServiceTray
-# See https://github.com/heewa/servicetray
+	defaultConfig = `# Config for Bento
+# See https://github.com/heewa/bento
 
 # Set 'log' to a path for the server to log there.
-#log: "/path/to/servicetray.log"
+#log: "/path/to/bento.log"
 
 # Log Level can be "crit", "error", "warn", "info", or "debug"
 #log_level: "info"
 
 # Path to the fifo file that the clients and server use to communicate
-#fifo: "/path/to/servicetray.fifo"
+#fifo: "/path/to/bento.fifo"
 
 # When temp services exit, after this duration (unless they are restarted),
 # they are auto-removed. This can be override from the cmdline for an
@@ -54,7 +54,7 @@ var (
 	LogLevel = log.LvlWarn
 
 	// LogPath is the path to the server's log file.
-	LogPath = "servicetray.log"
+	LogPath = "bento.log"
 
 	// FifoPath is the path to a unix named pipe that's used to communicate
 	// between clients & the server.

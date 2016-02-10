@@ -6,7 +6,7 @@ import (
 	"github.com/blang/semver"
 	log "github.com/inconshreveable/log15"
 
-	"github.com/heewa/servicetray/config"
+	"github.com/heewa/bento/config"
 )
 
 // VersionResponse -

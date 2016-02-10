@@ -7,15 +7,15 @@ import (
 	"github.com/getlantern/systray"
 	log "github.com/inconshreveable/log15"
 
-	"github.com/heewa/servicetray/server"
-	"github.com/heewa/servicetray/service"
+	"github.com/heewa/bento/server"
+	"github.com/heewa/bento/service"
 )
 
 const (
 	mainTitle   = "🍱"
-	mainTooltip = "Use servicetray from the cmdline to manage services"
+	mainTooltip = "Use bento from the cmdline to manage services"
 
-	quitTitle   = "Quit ServiceTray"
+	quitTitle   = "Quit Bento"
 	quitTooltip = "Beware: quitting will stop all services!"
 )
 

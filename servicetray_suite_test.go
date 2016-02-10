@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestServicetray(t *testing.T) {
+func TestBento(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Servicetray Suite")
+	RunSpecs(t, "Bento Suite")
 }

@@ -6,8 +6,8 @@ import (
 
 	log "github.com/inconshreveable/log15"
 
-	"github.com/heewa/servicetray/config"
-	"github.com/heewa/servicetray/service"
+	"github.com/heewa/bento/config"
+	"github.com/heewa/bento/service"
 )
 
 // LoadServicesArgs -

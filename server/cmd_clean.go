@@ -7,7 +7,7 @@ import (
 
 	log "github.com/inconshreveable/log15"
 
-	"github.com/heewa/servicetray/service"
+	"github.com/heewa/bento/service"
 )
 
 // CleanArgs -

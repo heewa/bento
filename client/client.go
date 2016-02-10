@@ -14,8 +14,8 @@ import (
 	"github.com/blang/semver"
 	log "github.com/inconshreveable/log15"
 
-	"github.com/heewa/servicetray/config"
-	"github.com/heewa/servicetray/server"
+	"github.com/heewa/bento/config"
+	"github.com/heewa/bento/server"
 )
 
 // Client handles communicating with a Server

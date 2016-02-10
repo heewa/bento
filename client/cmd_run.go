@@ -3,8 +3,8 @@ package client
 import (
 	"time"
 
-	"github.com/heewa/servicetray/server"
-	"github.com/heewa/servicetray/service"
+	"github.com/heewa/bento/server"
+	"github.com/heewa/bento/service"
 )
 
 // Run calls the Run cmd on the Server

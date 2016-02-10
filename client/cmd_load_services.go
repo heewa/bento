@@ -1,7 +1,7 @@
 package client
 
 import (
-	"github.com/heewa/servicetray/server"
+	"github.com/heewa/bento/server"
 )
 
 // LoadServices calls the LoadServices cmd on the Server

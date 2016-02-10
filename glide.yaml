@@ -1,4 +1,4 @@
-package: github.com/heewa/servicetray
+package: github.com/heewa/bento
 import:
 - package: github.com/inconshreveable/log15
 - package: gopkg.in/alecthomas/kingpin.v2

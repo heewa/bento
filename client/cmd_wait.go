@@ -1,8 +1,8 @@
 package client
 
 import (
-	"github.com/heewa/servicetray/server"
-	"github.com/heewa/servicetray/service"
+	"github.com/heewa/bento/server"
+	"github.com/heewa/bento/service"
 )
 
 // Wait calls the Wait cmd on the Server

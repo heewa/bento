@@ -6,7 +6,7 @@ import (
 
 	"github.com/getlantern/systray"
 
-	"github.com/heewa/servicetray/service"
+	"github.com/heewa/bento/service"
 )
 
 // ServiceItem is a menu item for a Service

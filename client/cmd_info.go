@@ -1,8 +1,8 @@
 package client
 
 import (
-	"github.com/heewa/servicetray/server"
-	"github.com/heewa/servicetray/service"
+	"github.com/heewa/bento/server"
+	"github.com/heewa/bento/service"
 )
 
 // Info calls the Info cmd on the Server

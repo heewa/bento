@@ -1,7 +1,7 @@
 package client
 
 import (
-	"github.com/heewa/servicetray/server"
+	"github.com/heewa/bento/server"
 )
 
 // Tail calls the Tail cmd on the Server

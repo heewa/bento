@@ -8,7 +8,7 @@ import (
 	log "github.com/inconshreveable/log15"
 	"gopkg.in/yaml.v2"
 
-	"github.com/heewa/servicetray/config"
+	"github.com/heewa/bento/config"
 )
 
 // Info holds info about a service

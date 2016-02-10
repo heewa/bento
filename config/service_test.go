@@ -1,7 +1,7 @@
 package config_test
 
 import (
-	. "github.com/heewa/servicetray/config"
+	. "github.com/heewa/bento/config"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

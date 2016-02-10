@@ -1,7 +1,7 @@
 package client
 
 import (
-	"github.com/heewa/servicetray/server"
+	"github.com/heewa/bento/server"
 
 	"github.com/blang/semver"
 )

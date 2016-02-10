@@ -7,10 +7,10 @@ import (
 	log "github.com/inconshreveable/log15"
 	"gopkg.in/alecthomas/kingpin.v2"
 
-	"github.com/heewa/servicetray/client"
-	"github.com/heewa/servicetray/config"
-	"github.com/heewa/servicetray/server"
-	"github.com/heewa/servicetray/tray"
+	"github.com/heewa/bento/client"
+	"github.com/heewa/bento/config"
+	"github.com/heewa/bento/server"
+	"github.com/heewa/bento/tray"
 )
 
 var (
