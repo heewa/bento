@@ -5,6 +5,20 @@ Bento is a service manager for OS X with a robust cli interface, and a light sys
 * Using [Homebrew](http://brew.sh/): `brew tap heewa/tap && brew install bento`
 * Building manually (assuming you have a Go environment set up): `go get -v github.com/heewa/bento`, update with `go get -u -v github.com/heewa/bento`. If just running `bento` doesn’t work after that, you might need to set add `$GOPATH/bin` to your `$PATH` env var.
 
+## Quickstart
+
+You can either run things as quick, temporary service: `bento run mongod`, which will run Mongo DB in the background, or you can keep saves services in a simple yaml file, `~/.bento/services.yml`:
+
+```yaml
+- name: Mongo
+  program: mongod
+  auto-start: true
+  restart-on-exit: true
+```
+
+Then manage it like: `bento start Mongo`, `bento stop Mongo`, `bento tail --follow Mongo`, etc. After you edit the file, you need to let Bento know you're done and to reaload it: `bento reload`.
+
+
 ## Running
 
 Just try `bento` in the command line! You can get more detailed help for a specific command like `bento help <cmd>` or `bento <cmd> --help`.
