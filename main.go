@@ -31,7 +31,7 @@ var (
 
 	reloadCmd = kingpin.Command("reload", "Reload services conf file")
 
-	runCmd        = kingpin.Command("run", "Run command as a temporary service")
+	runCmd        = kingpin.Command("run", "Create a new, temporary service and start it")
 	runCleanAfter = runCmd.Flag("clean-after", "Remove service after it's finished running for this long. Overrides config value for this service.").Duration()
 	runName       = runCmd.Flag("name", "Set a name for the service").String()
 	runDir        = runCmd.Flag("dir", "Directory to run the service from").ExistingDir()
