@@ -1,24 +1,23 @@
-Bento is a service manager with a robust cli interface, and a light system tray UI. It’s designed for personal use, as opposed to init.d or upstart.
+Bento is a service manager for OS X with a robust cli interface, and a light system tray UI. It’s designed for personal use, as opposed to init.d or upstart.
 
 ## Installing
 
-Currently you need to have a Go environment set up. You can get it with: `go get -v github.com/heewa/bento`, and update with `go get -u -b github.com/heewa/bento`. If just running `bento` doesn’t work after that, you might need to set add `$GOPATH/bin` to your `$PATH` env var.
-
-**Supported Platforms:** Currently only OS X is supported, but there isn’t a huge barrier to making it more cross platform. If you’d like to help out, I’d love to hear from you!
+* Using [Homebrew](http://brew.sh/): `brew tap heewa/tap && brew install bento`
+* Building manually (assuming you have a Go environment set up): `go get -v github.com/heewa/bento`, update with `go get -u -v github.com/heewa/bento`. If just running `bento` doesn’t work after that, you might need to set add `$GOPATH/bin` to your `$PATH` env var.
 
 ## Running
 
 Just try `bento` in the command line! You can get more detailed help for a specific command like `bento help <cmd>` or `bento <cmd> --help`.
 
-### Run a new service
+### Start a new service
 
-You can run any command as a new service like: `bento run memcached`. If it takes arguments, you might get away with just appending them, but if they're flags, bento will try to parse them itself, so separate them like: `bento run memcached -- -v`.
+You can run any command as a new, temporary (unsaved) service like: `bento run memcached`. If it takes arguments, you might get away with just appending them, but if they're flags, bento will try to parse them itself, so separate them like: `bento run memcached -- -v`.
 
 I find it useful to start off tailing output of new services to make sure I got it right: `bento run --tail redis-server`. You can hit `<ctrl-c>` to interrupt bento, and it won't affect the service.
 
 To see the _stdout_ & _stderr_ of a service, use `bento tail`. Add a `-f` to follow the output, much like the unix `tail` command. Similarly, `-F` will follow the output through restarts.
 
-### Manage a service
+### Managing services
 
 See what services you have with: `bento list`. You can start & stop services: `bento start <name>` & `bento stop <name>`. You can remove finished (exitted) temporary services with `bento clean`, though they'll be auto-removed after some time anyway.
 
