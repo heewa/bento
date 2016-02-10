@@ -2,7 +2,7 @@ Bento is a service manager with a robust cli interface, and a light system tray 
 
 ## Installing
 
-Currently you need to have a Go environment set up. You can get it with: `go get -v github.com/heewa/bent`, and update with `go get -u -b github.com/heewa/bento`. If just running `bento` doesn’t work after that, you might need to set add `$GOPATH/bin` to your `$PATH` env var.
+Currently you need to have a Go environment set up. You can get it with: `go get -v github.com/heewa/bento`, and update with `go get -u -b github.com/heewa/bento`. If just running `bento` doesn’t work after that, you might need to set add `$GOPATH/bin` to your `$PATH` env var.
 
 **Supported Platforms:** Currently only OS X is supported, but there isn’t a huge barrier to making it more cross platform. If you’d like to help out, I’d love to hear from you!
 
