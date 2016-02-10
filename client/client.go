@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/blang/semver"
@@ -69,6 +70,13 @@ func (c *Client) Connect() error {
 			"--log", config.LogPath,
 			"init")
 		log.Debug("Server might not running, starting one", "args", strings.Join(cmd.Args, " "))
+
+		// Set the process group ID to 0, so it'll create a new one, and
+		// not get interrupt signals sent to this process.
+		cmd.SysProcAttr = &syscall.SysProcAttr{
+			Pgid:    0,
+			Setpgid: true,
+		}
 
 		// Watch stdout & stderr output for server for a bit
 		stdoutPipe, err := cmd.StdoutPipe()
