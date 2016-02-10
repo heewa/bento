@@ -22,6 +22,8 @@ var (
 
 	// Commands on nothing
 
+	versionCmd = kingpin.Command("version", "List client & server versions")
+
 	listCmd     = kingpin.Command("list", "List services")
 	listRunning = listCmd.Flag("running", "List only running services").Bool()
 	listTemp    = listCmd.Flag("temp", "List only temp services").Bool()
@@ -73,10 +75,11 @@ var (
 	commandTable = map[string](func(*client.Client) error){
 		"shutdown": handleShutdown,
 
-		"list":   handleList,
-		"reload": handleReload,
-		"run":    handleRun,
-		"clean":  handleClean,
+		"version": handleVersion,
+		"list":    handleList,
+		"reload":  handleReload,
+		"run":     handleRun,
+		"clean":   handleClean,
 
 		"start": handleStart,
 		"stop":  handleStop,
@@ -167,6 +170,19 @@ func handleInit() error {
 
 func handleShutdown(client *client.Client) error {
 	return client.Shutdown()
+}
+
+func handleVersion(client *client.Client) error {
+	fmt.Printf("client version: %s\n", config.Version)
+	fmt.Printf("server version: %s\n", client.ServerVersion)
+
+	if config.Version.GT(client.ServerVersion) {
+		fmt.Println("Client is ahead of server - restart server to upgrade.")
+	} else if config.Version.LT(client.ServerVersion) {
+		fmt.Println("Server is ahead of client - maybe you're running an old client from a different path?")
+	}
+
+	return nil
 }
 
 func handleList(client *client.Client) error {

@@ -11,14 +11,20 @@ import (
 	"strings"
 	"time"
 
+	"github.com/blang/semver"
 	log "github.com/inconshreveable/log15"
 
 	"github.com/heewa/servicetray/config"
+	"github.com/heewa/servicetray/server"
 )
 
 // Client handles communicating with a Server
 type Client struct {
 	client *rpc.Client
+
+	// ServerVersion is reported by the server from an RPC call right after
+	// connect
+	ServerVersion semver.Version
 }
 
 // New creates a new Client
@@ -116,11 +122,12 @@ func (c *Client) Connect() error {
 			// Only attemp if fifo even exists
 			if _, err = os.Stat(config.FifoPath); err == nil {
 				client, err := rpc.Dial("unix", config.FifoPath)
-				if err == nil {
-					clientChan <- client
+				if err != nil {
+					log.Debug("Error connecting to server", "err", err)
 					return
 				}
-				log.Debug("Error connecting to server", "err", err)
+
+				clientChan <- client
 			}
 		}
 	}()
@@ -128,6 +135,13 @@ func (c *Client) Connect() error {
 	select {
 	case client := <-clientChan:
 		if client != nil {
+			// Check that the server's version is close enough to ours
+			versionReply := server.VersionResponse{}
+			if err := client.Call("Server.Version", false, &versionReply); err != nil {
+				return fmt.Errorf("Failed to get server version: %v", err)
+			}
+			c.ServerVersion = versionReply.Version
+
 			c.client = client
 			return nil
 		}
@@ -149,6 +163,22 @@ func (c *Client) Close() {
 // Call wraps a regular rpc.Call to give more user-friendly error messages in
 // some cases.
 func (c *Client) Call(method string, args interface{}, reply interface{}) error {
+	if c == nil {
+		return fmt.Errorf("Failed to initialize server connection")
+	}
+
+	// Notify user about version mismatches
+	if config.Version.LT(c.ServerVersion) {
+		fmt.Fprintf(os.Stderr, "Note: client version (%s) is behind server version (%s). Upgrade client.\n", config.Version, c.ServerVersion)
+	} else if config.Version.GT(c.ServerVersion) {
+		fmt.Fprintf(os.Stderr, "Note: client version (%s) is ahead of server version (%s). Upgrade server.\n", config.Version, c.ServerVersion)
+	}
+
+	// Outright refuse to use a server that's too far ahead/behind
+	if c.ServerVersion.Major != config.Version.Major || c.ServerVersion.Minor != config.Version.Minor {
+		return fmt.Errorf("Client & Server versions are incompatible.")
+	}
+
 	err := c.client.Call(method, args, reply)
 	if err == io.EOF || err == io.ErrUnexpectedEOF {
 		err = fmt.Errorf("Lost connection to backend server during a call to %s", method)

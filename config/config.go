@@ -8,6 +8,7 @@ import (
 	"path"
 	"time"
 
+	"github.com/blang/semver"
 	log "github.com/inconshreveable/log15"
 	"gopkg.in/alecthomas/kingpin.v2"
 	"gopkg.in/yaml.v2"
@@ -41,6 +42,9 @@ const (
 )
 
 var (
+	// Version of the package
+	Version = semver.MustParse("0.1.0-alpha.1")
+
 	// ServiceConfigFile is the full path to the config file that lists
 	// services to be read on server startup. If the path doesn't exist,
 	// this'll be empty.

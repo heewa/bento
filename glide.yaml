@@ -4,3 +4,4 @@ import:
 - package: gopkg.in/alecthomas/kingpin.v2
 - package: github.com/getlantern/systray
 - package: gopkg.in/yaml.v2
+- package: github.com/blang/semver

@@ -1,10 +1,12 @@
-hash: dec341ef74bed4d3983fc25b2aca3bc17f43213b25d55f9df22569b0788bb20e
-updated: 2016-02-05T01:42:24.772746845-05:00
+hash: f17c31ffaf2f9feae9fc7d8da4159cfc4767dc3a696759c1afa68d9ceeecc400
+updated: 2016-02-09T18:54:59.255922639-05:00
 imports:
 - name: github.com/alecthomas/template
   version: 14fd436dd20c3cc65242a9f396b61bfc8a3926fc
 - name: github.com/alecthomas/units
   version: 2efee857e7cfd4f3d0138cc3cbb1b4966962b93a
+- name: github.com/blang/semver
+  version: aea32c919a18e5ef4537bbd283ff29594b1b0165
 - name: github.com/getlantern/golog
   version: 157ff085527fe90d386163e8d3ca6c180ba5e26c
 - name: github.com/getlantern/systray
