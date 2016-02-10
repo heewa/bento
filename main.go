@@ -14,24 +14,24 @@ import (
 )
 
 var (
-	// Server Commands
-
-	initCmd = kingpin.Command("init", "Start a new server").Hidden()
-
-	shutdownCmd = kingpin.Command("shutdown", "Stop all services and shut the server down")
-
-	// Commands on nothing
-
-	versionCmd = kingpin.Command("version", "List client & server versions")
+	// Main use-case commands
 
 	listCmd     = kingpin.Command("list", "List services")
 	listRunning = listCmd.Flag("running", "List only running services").Bool()
 	listTemp    = listCmd.Flag("temp", "List only temp services").Bool()
 	listLong    = listCmd.Flag("long", "List more info").Short('l').Bool()
 
+	startCmd     = kingpin.Command("start", "Start an existing service")
+	startTail    = startCmd.Flag("tail", "Tail output after starting the service").Bool()
+	startService = startCmd.Arg("service", "Service to start").Required().String()
+
+	stopCmd     = kingpin.Command("stop", "Stop a running service")
+	stopTail    = stopCmd.Flag("tail", "Tail output of the service while stopping").Bool()
+	stopService = stopCmd.Arg("service", "Service to stop").Required().String()
+
 	reloadCmd = kingpin.Command("reload", "Reload services conf file")
 
-	runCmd        = kingpin.Command("run", "Run command as a new service")
+	runCmd        = kingpin.Command("run", "Run command as a temporary service")
 	runCleanAfter = runCmd.Flag("clean-after", "Remove service after it's finished running for this long. Overrides config value for this service.").Duration()
 	runName       = runCmd.Flag("name", "Set a name for the service").String()
 	runDir        = runCmd.Flag("dir", "Directory to run the service from").ExistingDir()
@@ -44,15 +44,7 @@ var (
 	cleanAge     = cleanCmd.Flag("age", "Only remove temp services that have been stopped for at least this long. Specify like '10s' or '5m'").Default("0s").Duration()
 	cleanService = cleanCmd.Arg("service", "Service name or pattern").String()
 
-	// Service commands
-
-	startCmd     = kingpin.Command("start", "Start an existing service")
-	startTail    = startCmd.Flag("tail", "Tail output after starting the service").Bool()
-	startService = startCmd.Arg("service", "Service to start").Required().String()
-
-	stopCmd     = kingpin.Command("stop", "Stop a running service")
-	stopTail    = stopCmd.Flag("tail", "Tail output of the service while stopping").Bool()
-	stopService = stopCmd.Arg("service", "Service to stop").Required().String()
+	// Other service commands
 
 	tailCmd            = kingpin.Command("tail", "Tail stdout and/or stderr of a service")
 	tailNum            = tailCmd.Flag("num", "Number of lines from end to output").Short('n').Default("10").Int()
@@ -70,6 +62,14 @@ var (
 
 	pidCmd     = kingpin.Command("pid", "Output the process id for a running service")
 	pidService = pidCmd.Arg("service", "Service to get pid of").Required().String()
+
+	// Server and management
+
+	initCmd = kingpin.Command("init", "Start a new server").Hidden()
+
+	shutdownCmd = kingpin.Command("shutdown", "Stop all services and shut the server down")
+
+	versionCmd = kingpin.Command("version", "List client & server versions")
 
 	// Function table for commands
 	commandTable = map[string](func(*client.Client) error){
