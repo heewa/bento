@@ -55,8 +55,8 @@ After changing the file, reload the service configuration without restarting wit
 #### Service Configuration Options
 
 * `name`: (required) The name of the service. You'll specify this to manage the service on the cli.
-* `program`: (required) A full path to the binary to run.
-* `args`: A list of arguments to the program.
+* `program`: (required) A full path to the binary to run. This is a regular path, not a bash command.
+* `args`: A list of arguments to the program. Again, this isn't bash, so wildcards, `~`, and env vars don't work. If you really want these, let me know in a github issue or email, and I'll try to get that feature in sooner.
 * `dir`: A path to a runtime dir for the program. It defaults to the home dir of the server's starting user.
 * `env`: A map of environment variable names to values.
 * `auto-start`: If true, this service will be automatically started by bento when it first runs.
