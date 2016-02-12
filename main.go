@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"sort"
 
 	log "github.com/inconshreveable/log15"
 	"gopkg.in/alecthomas/kingpin.v2"
@@ -10,6 +11,7 @@ import (
 	"github.com/heewa/bento/client"
 	"github.com/heewa/bento/config"
 	"github.com/heewa/bento/server"
+	"github.com/heewa/bento/service"
 	"github.com/heewa/bento/tray"
 )
 
@@ -187,6 +189,14 @@ func handleVersion(client *client.Client) error {
 
 func handleList(client *client.Client) error {
 	services, err := client.List(*listRunning, *listTemp)
+
+	// Sort short list by activity, and long list by name, cuz long list is
+	// more of a clerical thing, and short list is more a status-check.
+	if *listLong {
+		sort.Sort(service.InfoByName(services))
+	} else {
+		sort.Sort(service.InfoByActivity(services))
+	}
 
 	for _, serv := range services {
 		if *listLong {

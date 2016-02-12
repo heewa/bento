@@ -29,6 +29,30 @@ type Info struct {
 	Tail []string `yaml:"-"`
 }
 
+// InfoByName implements the sort interface
+type InfoByName []Info
+
+func (i InfoByName) Len() int           { return len(i) }
+func (i InfoByName) Swap(a, b int)      { i[b], i[a] = i[a], i[b] }
+func (i InfoByName) Less(a, b int) bool { return strings.Compare(i[a].Name, i[b].Name) < 0 }
+
+// InfoByActivity implements the sort interface, so that the order is:
+//   - running & recently started
+//   - running & started longer ago than above
+//   - stopped & rececently exitted
+//   - stopped & exitted longer ago than above
+type InfoByActivity []Info
+
+func (i InfoByActivity) Len() int      { return len(i) }
+func (i InfoByActivity) Swap(a, b int) { i[b], i[a] = i[a], i[b] }
+func (i InfoByActivity) Less(a, b int) bool {
+	return (
+	// [a] running
+	(i[a].Running && (!i[b].Running || i[a].StartTime.After(i[b].StartTime))) ||
+		// [a] stopped
+		(!i[a].Running && !i[b].Running && i[a].EndTime.After(i[b].EndTime)))
+}
+
 var (
 	stoppedNameColor = color.New(color.FgBlue).SprintfFunc()
 	runningNameColor = color.New(color.FgYellow).SprintfFunc()
