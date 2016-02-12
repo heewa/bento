@@ -2,9 +2,12 @@ package service
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/dustin/go-humanize"
+	"github.com/fatih/color"
 	log "github.com/inconshreveable/log15"
 	"gopkg.in/yaml.v2"
 
@@ -24,52 +27,80 @@ type Info struct {
 	EndTime   time.Time     `yaml:"end-time,omitempty"`
 	Runtime   time.Duration `yaml:"run-time,omitempty"`
 
-	Tail []string `yaml:"tail,omitempty"`
+	Tail []string `yaml:"-"`
 }
+
+var (
+	stoppedNameColor = color.New(color.FgBlue).SprintfFunc()
+	runningNameColor = color.New(color.FgYellow).SprintfFunc()
+	statusColor      = color.New(color.FgHiWhite, color.Bold).SprintfFunc()
+	pidColor         = color.New().SprintfFunc()
+
+	unstartedBullet = "●"
+	succeededBullet = color.GreenString("✔")
+	failedBullet    = color.RedString("✘")
+	runningBullet   = color.YellowString("⌁")
+
+	autoStartSymbol     = color.WhiteString("↑")
+	restartOnExitSymbol = color.WhiteString("↺")
+)
 
 // String gets a user friendly string about a service.
 func (i Info) String() string {
+	nameColor := stoppedNameColor
+
+	var stateInfo string
 	var state string
 	if i.Running {
-		state = fmt.Sprintf(
-			"<running> uptime:%v pid:%d started:%s",
-			i.Runtime, i.Pid, i.StartTime.Format(time.UnixDate))
+		nameColor = runningNameColor
+		state = runningBullet
+		stateInfo = fmt.Sprintf(
+			"%s pid:%s",
+			statusColor("started %s", humanize.Time(i.StartTime)),
+			pidColor("%d", i.Pid))
 	} else if i.Pid == 0 {
-		state = "<unstarted>"
+		state = unstartedBullet
+		stateInfo = statusColor("unstarted")
+	} else if i.Succeeded {
+		state = succeededBullet
+		stateInfo = fmt.Sprintf(
+			"%s pid:%s",
+			statusColor("ended %s", humanize.Time(i.EndTime)),
+			pidColor("%d", i.Pid))
 	} else {
-		result := "failed"
-		if i.Succeeded {
-			result = "succeeded"
-		}
-
-		state = fmt.Sprintf(
-			"<%s> runtime:%v ended:%s ago pid:%d started:%s",
-			result,
-			i.Runtime,
-			time.Since(i.EndTime).String(),
-			i.Pid,
-			i.StartTime.Format(time.UnixDate))
+		state = failedBullet
+		stateInfo = fmt.Sprintf(
+			"%s pid:%s",
+			statusColor("failed %s", humanize.Time(i.EndTime)),
+			pidColor("%d", i.Pid))
 	}
 
-	var behaviors []string
+	autoStart := " "
 	if i.AutoStart {
-		behaviors = append(behaviors, "(auto-start) ")
-	}
-	if i.RestartOnExit {
-		behaviors = append(behaviors, "(restart-on-exit) ")
+		autoStart = autoStartSymbol
 	}
 
-	cmd := i.Program
+	restartOnExit := " "
+	if i.RestartOnExit {
+		restartOnExit = restartOnExitSymbol
+	}
+
+	// For a short string, just grab the command's file part
+	cmd := filepath.Base(i.Program)
 	if len(i.Args) > 0 {
-		cmd = fmt.Sprintf("%s %s", i.Program, strings.Join(i.Args, " "))
+		cmd = fmt.Sprintf("%s %s", cmd, strings.Join(i.Args, " "))
+	}
+	if len(cmd) > 100 {
+		cmd = fmt.Sprintf("%s…", cmd[:99])
 	}
 
 	return fmt.Sprintf(
-		"[%s] %s %scmd:'%s' dir:%s env:%v",
-		i.Name,
+		"  %s %s %s %s  %s cmd:'%s'",
 		state,
-		strings.Join(behaviors, ""),
-		cmd, i.Dir, i.Env)
+		nameColor("%-15s", i.Name),
+		autoStart, restartOnExit,
+		stateInfo,
+		cmd)
 }
 
 // LongString gets a more detailed description of a service
