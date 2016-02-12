@@ -78,9 +78,14 @@ func (s *Service) Info() Info {
 	info := Info{
 		Service: &s.Conf,
 
-		Running:   running,
-		Pid:       s.Pid(),
-		Succeeded: !running && (s.userStopped || (s.state != nil && s.state.Success())),
+		Running: running,
+		Pid:     s.Pid(),
+
+		// - running services haven't succeeded yet
+		// - a service stopped by a user is succesfull, regardless of result
+		// - a service that's in the restart watchlist is failed if not running
+		// - otherwise use exit status
+		Succeeded: !running && (s.userStopped || (!s.Conf.RestartOnExit && s.state != nil && s.state.Success())),
 
 		StartTime: s.startTime,
 		EndTime:   s.endTime,
