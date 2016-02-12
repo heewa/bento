@@ -8,7 +8,6 @@ import (
 
 	"github.com/dustin/go-humanize"
 	"github.com/fatih/color"
-	log "github.com/inconshreveable/log15"
 	"gopkg.in/yaml.v2"
 
 	"github.com/heewa/bento/config"
@@ -105,11 +104,76 @@ func (i Info) String() string {
 
 // LongString gets a more detailed description of a service
 func (i Info) LongString() string {
-	bytes, err := yaml.Marshal(i)
-	if err != nil {
-		log.Error("Failed to encode Info as yaml", "err", err, "info", i)
-		return i.String()
+	stateColor := stoppedNameColor
+	state := "stopped"
+	stateBullet := unstartedBullet
+	if i.Running {
+		stateColor = runningNameColor
+		state = fmt.Sprintf("%s, pid:%v", stateColor("running"), i.Pid)
+		stateBullet = runningBullet
 	}
 
-	return string(bytes)
+	startTime := "(hasn't started yet)"
+	if !i.StartTime.IsZero() {
+		startTime = fmt.Sprintf("%s, %v", humanize.Time(i.StartTime), i.StartTime)
+	}
+
+	exitTime := fmt.Sprintf("%s, %v", humanize.Time(i.EndTime), i.EndTime)
+	exitStatus := "(hasn't exitted yet)"
+	exitBullet := unstartedBullet
+	if i.Succeeded {
+		exitStatus = color.GreenString("succeeded")
+		exitBullet = succeededBullet
+	} else if !i.EndTime.IsZero() {
+		exitStatus = color.RedString("failed")
+		exitBullet = failedBullet
+	} else {
+		exitTime = "-"
+	}
+
+	runTime := "(hasn't run yet)"
+	if !i.EndTime.IsZero() {
+		runTime = i.EndTime.Sub(i.StartTime).String()
+	} else if i.Running {
+		runTime = time.Since(i.StartTime).String()
+	}
+
+	autoStart := "-"
+	if i.AutoStart {
+		autoStart = autoStartSymbol
+	}
+
+	restartOnExit := "-"
+	if i.RestartOnExit {
+		restartOnExit = restartOnExitSymbol
+	}
+
+	var conf string
+	if bytes, err := yaml.Marshal(i.Service); err != nil {
+		conf = color.RedString(" %v", err)
+	} else {
+		for _, line := range strings.Split(string(bytes), "\n") {
+			conf = fmt.Sprintf("%s\n      %s", conf, line)
+		}
+	}
+
+	return fmt.Sprintf(
+		"[%s]\n"+
+			"  %s %s\n"+
+			"  %s last exit status: %s\n"+
+			"  - last exit time: %s\n"+
+			"  - last start time: %s\n"+
+			"  - run time: %s\n"+
+			"  %s auto-start: %v\n"+
+			"  %s restart-on-exit: %v\n"+
+			"  - config:%s",
+		stateColor(i.Name),
+		stateBullet, state,
+		exitBullet, exitStatus,
+		exitTime,
+		startTime,
+		runTime,
+		autoStart, i.AutoStart,
+		restartOnExit, i.RestartOnExit,
+		conf)
 }

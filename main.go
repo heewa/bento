@@ -335,7 +335,7 @@ func handleTail(client *client.Client) error {
 func handleInfo(client *client.Client) error {
 	info, err := client.Info(*infoService)
 	if err == nil {
-		fmt.Println(info)
+		fmt.Println(info.LongString())
 	}
 	return err
 }
