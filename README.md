@@ -7,7 +7,7 @@ Bento is a service manager for OS X with a robust cli interface, and a light sys
 
 ## Quickstart
 
-You can either run things as quick, temporary service: `bento run mongod`, which will run Mongo DB in the background, or you can keep saves services in a simple yaml file, `~/.bento/services.yml`:
+You can either run things as quick, temporary service: `bento run-once mongod`, which will run Mongo DB in the background, or you can keep saves services in a simple yaml file, `~/.bento/services.yml`:
 
 ```yaml
 - name: Mongo
@@ -25,9 +25,9 @@ Just try `bento` in the command line! You can get more detailed help for a speci
 
 ### Start a new service
 
-You can run any command as a new, temporary (unsaved) service like: `bento run memcached`. If it takes arguments, you might get away with just appending them, but if they're flags, bento will try to parse them itself, so separate them like: `bento run memcached -- -v`.
+You can run any command as a new, temporary (unsaved) service like: `bento run-once memcached`. If it takes arguments, you might get away with just appending them, but if they're flags, bento will try to parse them itself, so separate them like: `bento run-once memcached -- -v`.
 
-I find it useful to start off tailing output of new services to make sure I got it right: `bento run --tail redis-server`. You can hit `<ctrl-c>` to interrupt bento, and it won't affect the service.
+I find it useful to start off tailing output of new services to make sure I got it right: `bento run-once --tail redis-server`. You can hit `<ctrl-c>` to interrupt bento, and it won't affect the service.
 
 To see the _stdout_ & _stderr_ of a service, use `bento tail`. Add a `-f` to follow the output, much like the unix `tail` command. Similarly, `-F` will follow the output through restarts.
 
@@ -50,7 +50,7 @@ You can save services permanently in a simple yaml file at `~/.bento/services.ym
   auto-start: true
 ```
 
-After changing the file, reload the service configuration without restarting with: `bento reload`. If you're having trouble getting a service right, try running it as a temp service (`bento run --args cmd -- cmd-args`), then get a yaml config for it with `bento list -l` (long list).
+After changing the file, reload the service configuration without restarting with: `bento reload`. If you're having trouble getting a service right, try running it as a temp service (`bento run-once --args cmd -- cmd-args`), then get a yaml config for it with `bento list -l` (long list).
 
 #### Service Configuration Options
 
