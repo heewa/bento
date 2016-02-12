@@ -29,11 +29,12 @@ type Service struct {
 	exitChan  chan interface{}
 
 	// All these fields are locked by stateLock
-	stateLock sync.RWMutex
-	process   *os.Process
-	state     *os.ProcessState
-	startTime time.Time
-	endTime   time.Time
+	stateLock   sync.RWMutex
+	process     *os.Process
+	state       *os.ProcessState
+	startTime   time.Time
+	endTime     time.Time
+	userStopped bool
 
 	// Output is locked by outLock
 	outLock      sync.RWMutex
@@ -77,17 +78,15 @@ func (s *Service) Info() Info {
 	info := Info{
 		Service: &s.Conf,
 
-		Running: running,
-		Pid:     s.Pid(),
+		Running:   running,
+		Pid:       s.Pid(),
+		Succeeded: !running && (s.userStopped || (s.state != nil && s.state.Success())),
 
 		StartTime: s.startTime,
 		EndTime:   s.endTime,
 		Runtime:   runtime,
 	}
 
-	if !running && s.state != nil {
-		info.Succeeded = s.state.Success()
-	}
 	func() {
 		s.outLock.RLock()
 		defer s.outLock.RUnlock()
@@ -125,6 +124,7 @@ func (s *Service) Start(updates chan<- Info) error {
 	s.state = nil
 	s.startTime = time.Time{}
 	s.endTime = time.Time{}
+	s.userStopped = false
 	s.stdout = nil
 	s.stdoutShifts = 0
 	s.stderr = nil
@@ -196,9 +196,16 @@ func (s *Service) Stop() error {
 
 		// Wait a bit for process to die
 		select {
-		case <-s.exitChan:
-			return nil
 		case <-time.After(10 * time.Second):
+		case <-s.exitChan:
+			// Consider this the user's stop, not an unrelated exit.
+			func() {
+				s.stateLock.Lock()
+				defer s.stateLock.Unlock()
+				s.userStopped = true
+			}()
+
+			return nil
 		}
 	}
 
