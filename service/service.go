@@ -88,12 +88,13 @@ func (s *Service) Info() Info {
 	if !running && s.state != nil {
 		info.Succeeded = s.state.Success()
 	}
+	func() {
+		s.outLock.RLock()
+		defer s.outLock.RUnlock()
 
-	// Lock out for a shorter time
-	s.outLock.RLock()
-	defer s.outLock.RUnlock()
-	info.Tail = make([]string, len(s.shortTail))
-	copy(info.Tail, s.shortTail)
+		info.Tail = make([]string, len(s.shortTail))
+		copy(info.Tail, s.shortTail)
+	}()
 
 	return info
 }
