@@ -258,22 +258,22 @@ func (s *Service) Pid() int {
 
 // Stdout gets lines from stdout since a line index
 func (s *Service) Stdout(pid, since, max int) (lines []string, newSince int, newPid int) {
-	s.stateLock.RLock()
-	defer s.stateLock.RUnlock()
+	currentPid := s.Pid()
+
 	s.outLock.RLock()
 	defer s.outLock.RUnlock()
 
-	return getOutput(pid, since, s.Pid(), s.stdoutShifts, max, s.stdout)
+	return getOutput(pid, since, currentPid, s.stdoutShifts, max, s.stdout)
 }
 
 // Stderr gets lines from stderr since a line index
 func (s *Service) Stderr(pid, since, max int) (lines []string, newSince int, newPid int) {
-	s.stateLock.RLock()
-	defer s.stateLock.RUnlock()
+	currentPid := s.Pid()
+
 	s.outLock.RLock()
 	defer s.outLock.RUnlock()
 
-	return getOutput(pid, since, s.Pid(), s.stderrShifts, max, s.stderr)
+	return getOutput(pid, since, currentPid, s.stderrShifts, max, s.stderr)
 }
 
 // Internal methods
