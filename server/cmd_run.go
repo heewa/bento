@@ -36,10 +36,26 @@ func (s *Server) Run(args *RunArgs, reply *RunResponse) (err error) {
 	}()
 
 	if args.Name == "" {
-		// Name it after the program, but avoid collisions by checking
-		args.Name = filepath.Base(args.Program)
-		for i := 1; i <= 50 && s.getService(args.Name) != nil; i++ {
-			args.Name = fmt.Sprintf("%s-%d", args.Program, i)
+		// Name it after the program, but avoid collisions by checking.
+		prog := filepath.Base(args.Program)
+		if srvc := s.getService(prog); srvc == nil {
+			args.Name = prog
+		} else if srvc.Conf.Temp && !srvc.Running() {
+			// Colliding with an ended temporary service, just replace it.
+			if err := s.removeService(prog); err == nil {
+				args.Name = prog
+			}
+		}
+
+		// If either that didn't work, append a number to name
+		if args.Name == "" {
+			for i := 1; i <= 50 && s.getService(prog) != nil; i++ {
+				prog = fmt.Sprintf("%s-%d", prog, i)
+			}
+			if s.getService(prog) != nil {
+				return fmt.Errorf("Failed to name the service")
+			}
+			args.Name = prog
 		}
 	}
 
