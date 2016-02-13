@@ -11,6 +11,7 @@ import (
 
 	"github.com/heewa/bento/client"
 	"github.com/heewa/bento/config"
+	"github.com/heewa/bento/logging"
 	"github.com/heewa/bento/server"
 	"github.com/heewa/bento/service"
 	"github.com/heewa/bento/tray"
@@ -104,9 +105,9 @@ func main() {
 	cmd := kingpin.Parse()
 
 	// Set up logging twice, cuz conf might change it, but it also logs
-	exitOnErr(setupLogging(cmd == "init", "-"))
+	exitOnErr(logging.Config(cmd == "init", "-", log.LvlInfo))
 	exitOnErr(config.Load(cmd == "init"))
-	exitOnErr(setupLogging(cmd == "init", config.LogPath))
+	exitOnErr(logging.Config(cmd == "init", config.LogPath, config.LogLevel))
 
 	// All other command besides init require a connection to the server
 	if cmd == "init" {
@@ -387,22 +388,4 @@ func handlePid(client *client.Client) error {
 		fmt.Println(info.Pid)
 	}
 	return err
-}
-
-func setupLogging(isServer bool, logPath string) error {
-	// Set client's logging to stdout, and server's if no path, or path of '-'
-	logHandler := log.StdoutHandler
-	if isServer && logPath != "" && logPath != "-" {
-		var err error
-		logHandler, err = log.FileHandler(logPath, log.LogfmtFormat())
-		if err != nil {
-			return err
-		}
-	}
-
-	log.Root().SetHandler(
-		log.LvlFilterHandler(config.LogLevel,
-			logHandler))
-
-	return nil
 }
