@@ -43,17 +43,12 @@ func (s *Service) Sanitize() error {
 	case s.Program:
 		return fmt.Errorf("Service needs a program to run")
 	case s.Dir:
-		// Try the current dir
-		if curDir, err := os.Getwd(); err == nil {
-			s.Dir = curDir
+		// Try the user's home dir
+		if usr, err := user.Current(); err == nil {
+			s.Dir = usr.HomeDir
 		} else {
-			// Try the user's home dir
-			if usr, err := user.Current(); err == nil {
-				s.Dir = usr.HomeDir
-			} else {
-				// I guess root?
-				s.Dir = "/"
-			}
+			// I guess root?
+			s.Dir = "/"
 		}
 	}
 
