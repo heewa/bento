@@ -21,7 +21,7 @@ import (
 var (
 	// Main use-case commands
 
-	listCmd     = kingpin.Command("list", "List services")
+	listCmd     = kingpin.Command("list", "List services").Alias("ls")
 	listRunning = listCmd.Flag("running", "List only running services").Bool()
 	listTemp    = listCmd.Flag("temp", "List only temp services").Bool()
 	listLong    = listCmd.Flag("long", "List more info").Short('l').Bool()
