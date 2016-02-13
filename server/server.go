@@ -52,10 +52,12 @@ func New() (*Server, <-chan service.Info, error) {
 	stop := make(chan interface{}, 1)
 
 	serv := &Server{
-		fifoAddr:        addr,
+		fifoAddr: addr,
+
 		services:        make(map[string]*service.Service),
 		watchedServices: make(map[string]chan interface{}),
-		stop:            stop,
+
+		stop: stop,
 	}
 
 	// Communicate with UI about service changes through a channel

@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/user"
 	"sort"
+	"sync"
 
 	log "github.com/inconshreveable/log15"
 	"gopkg.in/alecthomas/kingpin.v2"
@@ -335,25 +336,22 @@ func handleTail(client *client.Client) error {
 		*tailNum)
 
 	// Keep outputting until done
-	done := make(chan interface{})
+	var wait sync.WaitGroup
+	wait.Add(2)
 	go func() {
+		defer wait.Done()
 		for line := range stdoutChan {
 			fmt.Println(line)
 		}
-		done <- struct{}{}
 	}()
 	go func() {
+		defer wait.Done()
 		for line := range stderrChan {
 			fmt.Fprintln(os.Stderr, line)
 		}
-		done <- struct{}{}
 	}()
 
-	// Wait for both to finish, which they will do on err also
-	<-done
-	<-done
-
-	// Check err
+	wait.Wait()
 	if err, ok := <-errChan; ok && err != nil {
 		return err
 	}
