@@ -384,28 +384,30 @@ func (s *Service) watchOutput(out *bufio.Scanner, tail *[]string, shifts *int, d
 	size := 0
 
 	for out.Scan() {
-		s.outLock.Lock()
-
 		line := out.Text()
 
-		if len(s.shortTail) >= shortTailLen {
-			s.shortTail = append(s.shortTail[len(s.shortTail)-shortTailLen:], line)
-		} else {
-			s.shortTail = append(s.shortTail, line)
-		}
+		func() {
+			s.outLock.Lock()
+			defer s.outLock.Unlock()
 
-		size += len(line)
-		*tail = append(*tail, line)
+			if len(s.shortTail) >= shortTailLen {
+				s.shortTail = append(s.shortTail[len(s.shortTail)-shortTailLen:], line)
+			} else {
+				s.shortTail = append(s.shortTail, line)
+			}
 
-		// Cut down by total size, cuz output could be a binary stream, and we
-		// care about size more than # lines anyway.
-		for len(*tail) > 1 && size > maxOutputSize {
-			size -= len((*tail)[0])
-			*tail = (*tail)[1:]
-			*shifts++
-		}
+			size += len(line)
+			*tail = append(*tail, line)
 
-		s.outLock.Unlock()
+			// Cut down by total size, cuz output could be a binary stream, and we
+			// care about size more than # lines anyway.
+			for len(*tail) > 1 && size > maxOutputSize {
+				size -= len((*tail)[0])
+				*tail = (*tail)[1:]
+				*shifts++
+			}
+
+		}()
 	}
 
 	done <- struct{}{}
