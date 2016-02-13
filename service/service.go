@@ -63,34 +63,31 @@ func New(conf config.Service) (*Service, error) {
 
 // Info gets info about the service
 func (s *Service) Info() Info {
-	s.stateLock.RLock()
-	defer s.stateLock.RUnlock()
-
-	running := s.Running()
-
-	var runtime time.Duration
-	if running {
-		runtime = time.Since(s.startTime)
-	} else {
-		runtime = s.endTime.Sub(s.startTime)
-	}
-
 	info := Info{
 		Service: &s.Conf,
+	}
 
-		Running: running,
-		Pid:     s.Pid(),
+	func() {
+		s.stateLock.RLock()
+		defer s.stateLock.RUnlock()
+
+		info.Running = s.Running()
+		info.Pid = s.Pid()
+
+		info.StartTime = s.startTime
+		info.EndTime = s.endTime
+		if info.Running {
+			info.Runtime = time.Since(s.startTime)
+		} else {
+			info.Runtime = s.endTime.Sub(s.startTime)
+		}
 
 		// - running services haven't succeeded yet
 		// - a service stopped by a user is succesfull, regardless of result
 		// - a service that's in the restart watchlist is failed if not running
 		// - otherwise use exit status
-		Succeeded: !running && (s.userStopped || (!s.Conf.RestartOnExit && s.state != nil && s.state.Success())),
-
-		StartTime: s.startTime,
-		EndTime:   s.endTime,
-		Runtime:   runtime,
-	}
+		info.Succeeded = !info.Running && (s.userStopped || (!s.Conf.RestartOnExit && s.state != nil && s.state.Success()))
+	}()
 
 	func() {
 		s.outLock.RLock()
