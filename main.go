@@ -351,7 +351,9 @@ func handleTail(client *client.Client) error {
 		}
 	}()
 
+	// Wait for all output, even if there's an error, so we show the tail
 	wait.Wait()
+
 	if err, ok := <-errChan; ok && err != nil {
 		return err
 	}

@@ -10,9 +10,9 @@ func (c *Client) Tail(name string, stdout, stderr bool, follow, followRestarts b
 		follow = true
 	}
 
-	stdoutChan := make(chan string)
-	stderrChan := make(chan string)
-	errChan := make(chan error)
+	stdoutChan := make(chan string, 100)
+	stderrChan := make(chan string, 100)
+	errChan := make(chan error, 1) // needs to be buffered cuz client might wait
 
 	args := server.TailArgs{
 		Name:     name,
