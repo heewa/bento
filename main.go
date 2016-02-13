@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/user"
 	"sort"
 
 	log "github.com/inconshreveable/log15"
@@ -129,6 +130,15 @@ func main() {
 // handleInit is the main entry point into the UI & server backends. This is how
 // the app really "starts" up.
 func handleInit() error {
+	// Since we're a server, it shouldn't matter where we were started from. So
+	// change to user's home dir.
+	if usr, err := user.Current(); err != nil || os.Chdir(usr.HomeDir) != nil {
+		// That didn't work. Use root.
+		if err = os.Chdir("/"); err != nil {
+			return fmt.Errorf("Failed to set server's dir: %v", err)
+		}
+	}
+
 	// Start the UI
 	tray.Init()
 	defer tray.Quit()
