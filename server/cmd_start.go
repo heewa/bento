@@ -32,7 +32,6 @@ func (s *Server) Start(args StartArgs, reply *StartResponse) (err error) {
 		return fmt.Errorf("Service '%s' not found.", args.Name)
 	}
 
-	log.Info("Starting service", "service", serv.Conf.Name)
 	err = serv.Start(s.serviceUpdates)
 
 	// If started, and it's supposed to be watched, add to watchlist

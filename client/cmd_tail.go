@@ -39,12 +39,7 @@ func (c *Client) Tail(name string, stdout, stderr bool, follow, followRestarts b
 				return
 			}
 
-			// Set pid if called without one (whatever's latest)
-			if args.Pid == 0 {
-				args.Pid = reply.Pid
-			}
-
-			if reply.Pid != args.Pid && !followRestarts {
+			if args.Pid != 0 && reply.Pid != args.Pid && !followRestarts {
 				// These lines are already from a diff process, so we're done
 				return
 			}
