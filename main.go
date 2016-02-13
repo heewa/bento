@@ -258,6 +258,13 @@ func handleReload(client *client.Client) error {
 }
 
 func handleRun(client *client.Client) error {
+	// Run-once is a little different from saved services. Default to the
+	// current dir of the client.
+	if *runDir == "" {
+		// If it doesn't work, let the server pic a default
+		*runDir, _ = os.Getwd()
+	}
+
 	info, err := client.Run(*runName, *runProg, *runArgs, *runDir, *runEnv, *runCleanAfter)
 	if err == nil && !*runTail {
 		fmt.Println(info)
