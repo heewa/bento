@@ -43,7 +43,7 @@ const (
 
 var (
 	// Version of the package
-	Version = semver.MustParse("0.1.0-alpha.1")
+	Version = semver.MustParse("0.1.0-alpha.2")
 
 	// ServiceConfigFile is the full path to the config file that lists
 	// services to be read on server startup. If the path doesn't exist,
