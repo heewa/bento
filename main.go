@@ -306,6 +306,10 @@ func handleStart(client *client.Client) error {
 		if *startTail {
 			*tailService = info.Name
 			*tailFollow = true
+			if info.RestartOnExit {
+				*tailFollowRestarts = true
+			}
+
 			err = handleTail(client)
 		}
 	}
