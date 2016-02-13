@@ -29,14 +29,6 @@ func (c *Client) Tail(name string, stdout, stderr bool, follow, followRestarts b
 			close(errChan)
 		}()
 
-		// Make sure service exists, and get pid
-		info, err := c.Info(name)
-		if err != nil {
-			errChan <- err
-			return
-		}
-		args.Pid = info.Pid
-
 		for {
 			// Need to make a new reply struct, otherwise we'll get the same
 			// reply as last time. Not sure why, some rpc quirk.
@@ -45,6 +37,11 @@ func (c *Client) Tail(name string, stdout, stderr bool, follow, followRestarts b
 			if err := c.Call("Server.Tail", args, &reply); err != nil {
 				errChan <- err
 				return
+			}
+
+			// Set pid if called without one (whatever's latest)
+			if args.Pid == 0 {
+				args.Pid = reply.Pid
 			}
 
 			if reply.Pid != args.Pid && !followRestarts {
