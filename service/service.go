@@ -174,7 +174,7 @@ func (s *Service) Start(updates chan<- Info) error {
 }
 
 // Stop stops running the service
-func (s *Service) Stop(escalationInterval time.Duration) error {
+func (s *Service) Stop(escalationInterval time.Duration) (err error) {
 	if !s.Running() {
 		return nil
 	}
@@ -201,6 +201,34 @@ func (s *Service) Stop(escalationInterval time.Duration) error {
 		pids = append(pids, -pgid)
 	}
 
+	// The `userStopped` field should be set iff the process exited because
+	// the user asked for it. Since a lot happens as soon as a proc ends,
+	// even with locks, it's hard to coordinate. So optimistically set
+	// the field, assuming we'll succeed in stopping the proc, but clear it
+	// if we fail to, which is less time-sensitive as the process didn't
+	// exit, and even if it happens to exit right before we clear it, it
+	// can still be considered as the user's will. But only clear the
+	// field if there was an error AND the process is still running, so
+	// we don't compete with a different stop fn & undo them setting the
+	// field because we got an error killing the proc they succesfully
+	// killed.
+	func() {
+		s.stateLock.Lock()
+		defer s.stateLock.Unlock()
+
+		s.userStopped = true
+	}()
+	defer func() {
+		if err != nil {
+			s.stateLock.Lock()
+			defer s.stateLock.Unlock()
+
+			if s.Running() {
+				s.userStopped = false
+			}
+		}
+	}()
+
 	for _, pid := range pids {
 		for _, sig := range signals {
 			log.Debug("Sending service's proc signal", "service", s.Conf.Name, "signal", sig, "pid", pid)
@@ -212,13 +240,6 @@ func (s *Service) Stop(escalationInterval time.Duration) error {
 			select {
 			case <-time.After(escalationInterval):
 			case <-s.exitChan:
-				// Consider this the user's stop, not an unrelated exit.
-				func() {
-					s.stateLock.Lock()
-					defer s.stateLock.Unlock()
-					s.userStopped = true
-				}()
-
 				return nil
 			}
 		}
