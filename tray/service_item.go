@@ -17,8 +17,6 @@ type ServiceItem struct {
 
 // Set updates with Service info
 func (item *ServiceItem) Set(info service.Info) {
-	item.info = info
-
 	// If it ran and failed, mention that in title
 	if !info.Running && info.Pid != 0 && !info.Succeeded {
 		item.menu.SetTitle(fmt.Sprintf("%s <failed>", info.Name))
@@ -26,9 +24,9 @@ func (item *ServiceItem) Set(info service.Info) {
 		item.menu.SetTitle(info.Name)
 	}
 
-	if info.Running {
+	if info.Running && !item.info.Running {
 		item.menu.Check()
-	} else {
+	} else if !info.Running && item.info.Running {
 		item.menu.Uncheck()
 	}
 
@@ -37,4 +35,6 @@ func (item *ServiceItem) Set(info service.Info) {
 	} else {
 		item.menu.SetTooltip(info.PlainString())
 	}
+
+	item.info = info
 }
