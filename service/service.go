@@ -130,6 +130,15 @@ func (s *Service) Start(updates chan<- Info) error {
 	cmd.Dir = s.Conf.Dir
 	cmd.Env = envItems
 
+	// Set the process group ID to 0, so it'll create a new one, which
+	// it'll be in, plus all the subprocesses it might create. Then,
+	// signals to that PGID will go to them alone, not the bento
+	// server.
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		Pgid:    0,
+		Setpgid: true,
+	}
+
 	// Get line-scanners for stdout/err
 	pipe, err := cmd.StdoutPipe()
 	if err != nil {
@@ -174,27 +183,44 @@ func (s *Service) Stop(escalationInterval time.Duration) error {
 		escalationInterval = config.EscalationInterval
 	}
 
+	pid := s.Pid()
+	if pid == 0 {
+		return fmt.Errorf("Failed to get service's pid to stop", "service", s.Conf.Name)
+	}
+
 	// Try a sequence increasingly urgent signals
-	signals := []os.Signal{os.Interrupt, syscall.SIGTERM, os.Kill}
+	signals := []syscall.Signal{syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL}
 
-	for _, sig := range signals {
-		log.Debug("Sending service's proc signal", "service", s.Conf.Name, "signal", sig)
-		if err := s.signal(sig); err != nil {
-			return err
-		}
+	// In case killing the process itself fails, like if one of its child
+	// processes is ignoring signals from its parent, get the PGID (process
+	// group id) that we had the parent (the process we started) create.
+	pids := []int{pid}
+	if pgid, err := syscall.Getpgid(pid); err != nil {
+		log.Warn("Failed to get pgid in case of a failed service stop", "service", s.Conf.Name, "pid", pid, "err", err)
+	} else {
+		pids = append(pids, -pgid)
+	}
 
-		// Wait a bit for process to die
-		select {
-		case <-time.After(escalationInterval):
-		case <-s.exitChan:
-			// Consider this the user's stop, not an unrelated exit.
-			func() {
-				s.stateLock.Lock()
-				defer s.stateLock.Unlock()
-				s.userStopped = true
-			}()
+	for _, pid := range pids {
+		for _, sig := range signals {
+			log.Debug("Sending service's proc signal", "service", s.Conf.Name, "signal", sig, "pid", pid)
+			if err := syscall.Kill(pid, sig); err != nil {
+				return err
+			}
 
-			return nil
+			// Wait a bit for process to die
+			select {
+			case <-time.After(escalationInterval):
+			case <-s.exitChan:
+				// Consider this the user's stop, not an unrelated exit.
+				func() {
+					s.stateLock.Lock()
+					defer s.stateLock.Unlock()
+					s.userStopped = true
+				}()
+
+				return nil
+			}
 		}
 	}
 
