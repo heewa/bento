@@ -291,7 +291,7 @@ func (s *Server) addServiceToRestartWatch(srvc *service.Service) {
 }
 
 func (s *Server) removeServiceFromRestartWatch(name string) {
-	log.Info("Removing service from restart-watch list", "service", name)
+	log.Debug("Removing service from restart-watch list", "service", name)
 
 	s.watchLock.Lock()
 	defer s.watchLock.Unlock()

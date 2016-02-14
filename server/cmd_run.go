@@ -88,7 +88,7 @@ func (s *Server) Run(args *RunArgs, reply *RunResponse) (err error) {
 	default:
 	}
 
-	log.Info("Running service", "service", serv.Conf.Name)
+	log.Debug("Running service", "service", serv.Conf.Name)
 	if err := serv.Start(s.serviceUpdates); err != nil {
 		return err
 	}
