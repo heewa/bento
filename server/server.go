@@ -133,11 +133,20 @@ func (s *Server) Init(_ bool, _ *bool) error {
 	close(cancelHeartbeat)
 
 	// Stop all services
+	var wait sync.WaitGroup
 	for _, srvc := range s.services {
-		if err := s.Stop(StopArgs{srvc.Conf.Name}, nil); err != nil {
-			log.Warn("Failed to stop service during shutdown", "service", srvc.Conf.Name, "err", err)
+		if srvc.Running() {
+			wait.Add(1)
+			go func() {
+				defer wait.Done()
+
+				if err := s.Stop(StopArgs{srvc.Conf.Name}, nil); err != nil {
+					log.Warn("Failed to stop service during shutdown", "service", srvc.Conf.Name, "err", err)
+				}
+			}()
 		}
 	}
+	wait.Wait()
 
 	log.Info("All done")
 
