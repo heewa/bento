@@ -12,7 +12,8 @@ import (
 )
 
 const (
-	mainTitle   = "🍱"
+	activeIcon  = "🍱"
+	idleIcon    = "🍚"
 	mainTooltip = "Use bento from the cmdline to manage services"
 
 	quitTitle   = "Quit Bento"
@@ -26,7 +27,7 @@ var (
 
 	itemLock     sync.RWMutex
 	errorItem    *systray.MenuItem
-	serviceItems []ServiceItem
+	serviceItems []*ServiceItem
 	quitItem     *systray.MenuItem
 	deadItems    []*systray.MenuItem
 )
@@ -42,7 +43,7 @@ func Init() {
 
 		go systray.Run(func() {
 			// TODO: icon instead of title
-			systray.SetTitle(mainTitle)
+			systray.SetTitle(idleIcon)
 			systray.SetTooltip(mainTooltip)
 
 			// TODO: revive without dead items
@@ -72,6 +73,8 @@ func SetServer(serv *server.Server, serviceUpdates <-chan service.Info) error {
 
 	srvr = serv
 
+	currentIcon := idleIcon
+
 	// Watch for service changes
 	go func() {
 		for {
@@ -85,6 +88,38 @@ func SetServer(serv *server.Server, serviceUpdates <-chan service.Info) error {
 			} else {
 				SetService(info)
 			}
+
+			// If any services are running, set title to the active icon,
+			// otherwise the idle one.
+			func() {
+				// Shortcut if this updated service is running
+				if info.Running {
+					if currentIcon != activeIcon {
+						currentIcon = activeIcon
+						systray.SetTitle(activeIcon)
+					}
+					return
+				}
+
+				itemLock.RLock()
+				defer itemLock.RUnlock()
+
+				for _, item := range serviceItems {
+					if item.info.Running {
+						if currentIcon != activeIcon {
+							currentIcon = activeIcon
+							systray.SetTitle(activeIcon)
+						}
+						return
+					}
+				}
+
+				// None of them were running; set to idle
+				if currentIcon != idleIcon {
+					currentIcon = idleIcon
+					systray.SetTitle(idleIcon)
+				}
+			}()
 		}
 	}()
 
@@ -128,7 +163,7 @@ func SetService(info service.Info) {
 	item.menu, quitItem = quitItem, nil
 
 	item.Set(info)
-	serviceItems = append(serviceItems, item)
+	serviceItems = append(serviceItems, &item)
 
 	// If there are dead slots, use one for Quit
 	if len(deadItems) > 0 {
