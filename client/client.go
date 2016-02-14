@@ -166,7 +166,7 @@ func (c *Client) Connect(startServer bool) error {
 
 // Close will end the RPC connection
 func (c *Client) Close() {
-	if c.client != nil {
+	if c != nil && c.client != nil {
 		c.client.Close()
 		c.client = nil
 	}
