@@ -144,6 +144,14 @@ func (s *Server) Init(_ bool, _ *bool) error {
 					log.Warn("Failed to stop service during shutdown", "service", srvc.Conf.Name, "err", err)
 				}
 			}()
+		} else if srvc.Conf.RestartOnExit {
+			// Remove from restart-watch in case it's not running cuz it died
+			wait.Add(1)
+			go func() {
+				defer wait.Done()
+
+				s.removeServiceFromRestartWatch(srvc.Conf.Name)
+			}()
 		}
 	}
 	wait.Wait()
