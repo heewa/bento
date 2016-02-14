@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/user"
 	"sort"
+	"strings"
 	"sync"
 
 	log "github.com/inconshreveable/log15"
@@ -28,26 +29,26 @@ var (
 
 	startCmd     = kingpin.Command("start", "Start an existing service")
 	startTail    = startCmd.Flag("tail", "Tail output after starting the service").Bool()
-	startService = startCmd.Arg("service", "Service to start").Required().String()
+	startService = startCmd.Arg("service", "Service to start").Required().HintAction(autocompleteServices).String()
 
 	stopCmd     = kingpin.Command("stop", "Stop a running service")
 	stopTail    = stopCmd.Flag("tail", "Tail output of the service while stopping").Bool()
-	stopService = stopCmd.Arg("service", "Service to stop").Required().String()
+	stopService = stopCmd.Arg("service", "Service to stop").Required().HintAction(autocompleteServices).String()
 
 	reloadCmd = kingpin.Command("reload", "Reload services conf file")
 
 	runCmd        = kingpin.Command("run-once", "Create a new, temporary service and start it")
-	runCleanAfter = runCmd.Flag("clean-after", "Remove service after it's finished running for this long. Overrides config value for this service.").Duration()
-	runName       = runCmd.Flag("name", "Set a name for the service").String()
-	runDir        = runCmd.Flag("dir", "Directory to run the service from").ExistingDir()
-	runEnv        = runCmd.Flag("env", "Env vars to pass on to service").StringMap()
-	runProg       = runCmd.Arg("program", "Program to run").Required().String()
+	runCleanAfter = runCmd.Flag("clean-after", "Remove service after it's finished running for this long. Overrides config value for this service.").HintOptions("1s", "10m", "7d").Duration()
+	runName       = runCmd.Flag("name", "Set a name for the service").HintAction(autocompleteServices).String()
+	runDir        = runCmd.Flag("dir", "Directory to run the service from").HintAction(autocompleteDirs).ExistingDir()
+	runEnv        = runCmd.Flag("env", "Env vars to pass on to service").HintAction(autocompleteEnvs).StringMap()
+	runProg       = runCmd.Arg("program", "Program to run").Required().HintAction(autocompletePrograms).String()
 	runTail       = runCmd.Flag("tail", "Tail output after starting the service").Bool()
-	runArgs       = runCmd.Arg("args", "Args to pass to program, with -- prefix to prevent args from being processed here").Strings()
+	runArgs       = runCmd.Arg("args", "Args to pass to program, with -- prefix to prevent args from being processed here").HintAction(autocompleteArgs).Strings()
 
 	cleanCmd     = kingpin.Command("clean", "Remove one or multiple stopped temporary services")
-	cleanAge     = cleanCmd.Flag("age", "Only remove temp services that have been stopped for at least this long. Specify like '10s' or '5m'").Default("0s").Duration()
-	cleanService = cleanCmd.Arg("service", "Service name or pattern").String()
+	cleanAge     = cleanCmd.Flag("age", "Only remove temp services that have been stopped for at least this long. Specify like '10s' or '5m'").Default("0s").HintOptions("0s", "10s", "1m", "1h", "1d").Duration()
+	cleanService = cleanCmd.Arg("service", "Service name or pattern").HintAction(autocompleteServices).String()
 
 	// Other service commands
 
@@ -58,16 +59,16 @@ var (
 	tailStdout         = tailCmd.Flag("stdout", "Tail just stdout").Bool()
 	tailStderr         = tailCmd.Flag("stderr", "Tail just stderr").Bool()
 	tailPid            = tailCmd.Flag("pid", "Tail just output from this pid").Int()
-	tailService        = tailCmd.Arg("service", "Service to tail").Required().String()
+	tailService        = tailCmd.Arg("service", "Service to tail").Required().HintAction(autocompleteServices).String()
 
 	infoCmd     = kingpin.Command("info", "Output info on a service")
-	infoService = infoCmd.Arg("service", "Service to get info about").Required().String()
+	infoService = infoCmd.Arg("service", "Service to get info about").Required().HintAction(autocompleteServices).String()
 
 	waitCmd     = kingpin.Command("wait", "Waits for a service to stop and exits with 0 if succeeded, != 0 otherwise")
-	waitService = waitCmd.Arg("service", "Service to wait for").Required().String()
+	waitService = waitCmd.Arg("service", "Service to wait for").Required().HintAction(autocompleteServices).String()
 
 	pidCmd     = kingpin.Command("pid", "Output the process id for a running service")
-	pidService = pidCmd.Arg("service", "Service to get pid of").Required().String()
+	pidService = pidCmd.Arg("service", "Service to get pid of").Required().HintAction(autocompleteServices).String()
 
 	// Server and management
 
@@ -424,4 +425,93 @@ func handlePid(client *client.Client) error {
 		fmt.Println(info.Pid)
 	}
 	return err
+}
+
+func autocompleteServices() []string {
+	services := getServicesForAutocomplete()
+
+	names := make([]string, 0, len(services))
+	for _, s := range services {
+		names = append(names, s.Name)
+	}
+	return names
+}
+
+func autocompletePrograms() []string {
+	services := getServicesForAutocomplete()
+
+	progs := make([]string, 0, len(services))
+	for _, s := range services {
+		progs = append(progs, s.Program)
+	}
+	return progs
+}
+
+func autocompleteArgs() []string {
+	services := getServicesForAutocomplete()
+
+	args := make([]string, 0, len(services))
+	for _, s := range services {
+		args = append(args, strings.Join(s.Args, " "))
+	}
+	return args
+}
+
+func autocompleteDirs() []string {
+	services := getServicesForAutocomplete()
+
+	dirs := make([]string, 0, len(services))
+	for _, s := range services {
+		dirs = append(dirs, s.Dir)
+	}
+	return dirs
+}
+
+func autocompleteEnvs() []string {
+	services := getServicesForAutocomplete()
+
+	envs := make([]string, 0, len(services))
+	for _, s := range services {
+		var env []string
+		for key, val := range s.Env {
+			env = append(env, fmt.Sprintf("%s=%s", key, val))
+		}
+
+		envs = append(envs, strings.Join(env, " "))
+	}
+	return envs
+}
+
+// getServicesForAutocomplete tries to get a list of services for
+// autocompletion from a server, if possible. Otherwise tries to get from
+// config file.
+func getServicesForAutocomplete() []config.Service {
+	// First, disable logging, so even on errors, nothing is outputted, since
+	// this is being called during a tab-complete.
+	log.Root().SetHandler(log.DiscardHandler())
+
+	// Load config, so we can get the fifo path to connect to the server
+	config.Load(false)
+
+	// Try to connect to a server, but don't spin one up if it we can't.
+	if clnt, err := client.New(); err == nil {
+		defer clnt.Close()
+
+		if clnt.Connect(false) == nil {
+			if services, err := clnt.List(false, false); err == nil {
+				confs := make([]config.Service, 0, len(services))
+				for _, s := range services {
+					confs = append(confs, *s.Service)
+				}
+				return confs
+			}
+		}
+	}
+
+	// Try to get from a conf file
+	if confs, err := config.LoadServiceFile(config.ServiceConfigFile); err == nil {
+		return confs
+	}
+
+	return nil
 }
