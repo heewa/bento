@@ -363,7 +363,7 @@ func (s *Server) watchServices() (chan<- service.Info, <-chan service.Info) {
 					close(cancel)
 				}
 
-				// If it exitted, start a new death watch
+				// If it exited, start a new death watch
 				if !info.Dead && !info.Running && !info.EndTime.IsZero() {
 					cancel = make(chan interface{})
 					deathWatcherCancels[info.Name] = cancel

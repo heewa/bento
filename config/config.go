@@ -70,7 +70,7 @@ var (
 	// indicate a live server.
 	HeartbeatInterval = 10 * time.Second
 
-	// CleanTempServicesAfter is the interval after which an exitted temp
+	// CleanTempServicesAfter is the interval after which an exited temp
 	// service is removed.
 	CleanTempServicesAfter = 1 * time.Hour
 

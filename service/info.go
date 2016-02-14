@@ -40,8 +40,8 @@ func (i InfoByName) Less(a, b int) bool { return strings.Compare(i[a].Name, i[b]
 // InfoByActivity implements the sort interface, so that the order is:
 //   - running & recently started
 //   - running & started longer ago than above
-//   - stopped & rececently exitted
-//   - stopped & exitted longer ago than above
+//   - stopped & rececently exited
+//   - stopped & exited longer ago than above
 type InfoByActivity []Info
 
 func (i InfoByActivity) Len() int      { return len(i) }
@@ -152,7 +152,7 @@ func (i Info) LongString() string {
 	}
 
 	exitTime := fmt.Sprintf("%s, %v", humanize.Time(i.EndTime), i.EndTime)
-	exitStatus := "(hasn't exitted yet)"
+	exitStatus := "(hasn't exited yet)"
 	exitBullet := unstartedBullet
 	if i.Succeeded {
 		exitStatus = color.GreenString("succeeded")

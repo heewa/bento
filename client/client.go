@@ -118,7 +118,7 @@ func (c *Client) Connect(startServer bool) error {
 				outDone <- struct{}{}
 			}()
 
-			// If stdout/stderr are done, server exitted
+			// If stdout/stderr are done, server exited
 			<-outDone
 			<-outDone
 			cmd.Wait()
