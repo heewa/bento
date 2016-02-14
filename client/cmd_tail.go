@@ -5,7 +5,7 @@ import (
 )
 
 // Tail calls the Tail cmd on the Server
-func (c *Client) Tail(name string, stdout, stderr bool, follow, followRestarts bool, max int) (<-chan string, <-chan string, <-chan error) {
+func (c *Client) Tail(name string, stdout, stderr bool, follow, followRestarts bool, pid, max int) (<-chan string, <-chan string, <-chan error) {
 	if followRestarts {
 		follow = true
 	}
@@ -16,10 +16,18 @@ func (c *Client) Tail(name string, stdout, stderr bool, follow, followRestarts b
 
 	args := server.TailArgs{
 		Name:     name,
-		Stdout:   stdout,
-		Stderr:   stderr,
+		Pid:      pid,
 		MaxLines: max,
+		Follow:   follow,
 	}
+
+	if max > 0 {
+		// Start that many from end
+		args.Index = -1 * max
+	} else {
+		args.Index = -100000
+	}
+
 	reply := server.TailResponse{}
 
 	go func() {
@@ -39,28 +47,33 @@ func (c *Client) Tail(name string, stdout, stderr bool, follow, followRestarts b
 				return
 			}
 
-			if args.Pid != 0 && reply.Pid != args.Pid && !followRestarts {
-				// These lines are already from a diff process, so we're done
+			// Send lines down channels
+			for _, line := range reply.Lines {
+				if line.Stderr {
+					stderrChan <- line.Line
+				} else {
+					stdoutChan <- line.Line
+				}
+			}
+
+			// If there aren't any more lines from this process, stop, unless
+			// we're following restarts.
+			if !follow {
+				// Just wanted one tail call, so stop here
+				return
+			} else if !followRestarts && (reply.EOF || reply.NextPid == 0) {
+				// We're not following restart, so stop after end of input or
+				// no next proc (EOF is never true on first call with no pid).
 				return
 			}
 
-			// Send lines down channels
-			for _, line := range reply.StderrLines {
-				stderrChan <- line
-			}
-			for _, line := range reply.StdoutLines {
-				stdoutChan <- line
-			}
-
 			// Set up for next fetch
-			args.StdoutSinceLine = reply.StdoutSinceLine
-			args.StderrSinceLine = reply.StderrSinceLine
-			args.Pid = reply.Pid
-			args.MaxLines = 0
-
-			// Look forever if following, or just once if not
-			if !follow {
-				break
+			args = server.TailArgs{
+				Name:     name,
+				Pid:      reply.NextPid,
+				MaxLines: 0,
+				Index:    reply.NextIndex,
+				Follow:   follow,
 			}
 		}
 	}()

@@ -36,7 +36,7 @@ type Service struct {
 	endTime     time.Time
 	userStopped bool
 
-	out *output
+	Output output
 }
 
 // New creates a new Service
@@ -62,7 +62,6 @@ func (s *Service) Info() Info {
 
 	info := Info{
 		Service: &s.Conf,
-		Tail:    s.out.copyShortTail(),
 	}
 
 	info.Running = s.Running()
@@ -82,6 +81,12 @@ func (s *Service) Info() Info {
 	// - otherwise use exit status
 	info.Succeeded = !info.Running && (s.userStopped || (!s.Conf.RestartOnExit && s.state != nil && s.state.Success()))
 
+	tail, _, _, _ := s.Output.GetTail(info.Pid, 5)
+	info.Tail = make([]string, 0, len(tail))
+	for _, line := range tail {
+		info.Tail = append(info.Tail, line.Line)
+	}
+
 	return info
 }
 
@@ -90,7 +95,7 @@ func (s *Service) Start(updates chan<- Info) error {
 	if s.Running() {
 		return fmt.Errorf("Service already running.")
 	}
-	log.Info("Starting service", "service", s.Conf.Name)
+	log.Debug("Starting service", "service", s.Conf.Name)
 
 	// Update right after starting, but before we can race with the end-watcher
 	defer func() {
@@ -110,7 +115,6 @@ func (s *Service) Start(updates chan<- Info) error {
 	s.startTime = time.Time{}
 	s.endTime = time.Time{}
 	s.userStopped = false
-	s.out = nil
 
 	programPath, err := exec.LookPath(s.Conf.Program)
 	if err != nil {
@@ -150,11 +154,12 @@ func (s *Service) Start(updates chan<- Info) error {
 	go s.sendPeriodicUpdates(updates)
 
 	// Read from stdout/err & throw in a tail-array.
-	var outputDone <-chan interface{}
-	s.out, outputDone = newOutput(stdout, stderr)
+	outputDone := s.Output.followNewProcess(s.process.Pid, stdout, stderr)
 	go s.watchForExit(cmd, updates, outputDone)
 
 	close(s.startChan)
+
+	log.Info("Started service", "service", s.Conf.Name, "pid", s.process.Pid)
 
 	return nil
 }
@@ -231,16 +236,6 @@ func (s *Service) Pid() int {
 	return 0
 }
 
-// Stdout gets lines from stdout since a line index
-func (s *Service) Stdout(pid, since, max int) (lines []string, newSince int, newPid int) {
-	return s.out.getStdout(pid, s.Pid(), since, max)
-}
-
-// Stderr gets lines from stderr since a line index
-func (s *Service) Stderr(pid, since, max int) (lines []string, newSince int, newPid int) {
-	return s.out.getStderr(pid, s.Pid(), since, max)
-}
-
 // Internal methods
 
 func (s *Service) signal(sig os.Signal) error {
@@ -279,12 +274,11 @@ func (s *Service) sendPeriodicUpdates(updates chan<- Info) {
 
 // watchForExit will wait for both outputs to finish, then wait for the
 // process to end, before closing the exitChan to signal everyone else
-func (s *Service) watchForExit(cmd *exec.Cmd, updates chan<- Info, outputDone <-chan interface{}) {
+func (s *Service) watchForExit(cmd *exec.Cmd, updates chan<- Info, outputDone *sync.WaitGroup) {
 	// Completely exhaust both outputs before waiting for the cmd to exit,
 	// cuz Wait will close the pipes before we can read everything from
 	// them.
-	<-outputDone
-	<-outputDone
+	outputDone.Wait()
 
 	// Wait for exit
 	err := cmd.Wait()
