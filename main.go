@@ -57,6 +57,7 @@ var (
 	tailFollowRestarts = tailCmd.Flag("follow-restarts", "Continuously output new lines from service, even after it exits and starts again").Short('F').Bool()
 	tailStdout         = tailCmd.Flag("stdout", "Tail just stdout").Bool()
 	tailStderr         = tailCmd.Flag("stderr", "Tail just stderr").Bool()
+	tailPid            = tailCmd.Flag("pid", "Tail just output from this pid").Int()
 	tailService        = tailCmd.Arg("service", "Service to tail").Required().String()
 
 	infoCmd     = kingpin.Command("info", "Output info on a service")
@@ -273,6 +274,7 @@ func handleRun(client *client.Client) error {
 	} else if err == nil {
 		*tailService = info.Name
 		*tailFollow = true
+		*tailPid = info.Pid
 		err = handleTail(client)
 	}
 	return err
@@ -309,6 +311,7 @@ func handleStart(client *client.Client) error {
 			if info.RestartOnExit {
 				*tailFollowRestarts = true
 			}
+			*tailPid = info.Pid
 
 			err = handleTail(client)
 		}
@@ -337,6 +340,7 @@ func handleTail(client *client.Client) error {
 		*tailStderr || !*tailStdout,
 		*tailFollow,
 		*tailFollowRestarts,
+		*tailPid,
 		*tailNum)
 
 	// Keep outputting until done
