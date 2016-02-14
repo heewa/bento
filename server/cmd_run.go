@@ -49,13 +49,14 @@ func (s *Server) Run(args *RunArgs, reply *RunResponse) (err error) {
 
 		// If either that didn't work, append a number to name
 		if args.Name == "" {
-			for i := 1; i <= 50 && s.getService(prog) != nil; i++ {
-				prog = fmt.Sprintf("%s-%d", prog, i)
+			nextProg := prog
+			for i := 1; i <= 50 && s.getService(nextProg) != nil; i++ {
+				nextProg = fmt.Sprintf("%s-%d", prog, i)
 			}
-			if s.getService(prog) != nil {
+			if s.getService(nextProg) != nil {
 				return fmt.Errorf("Failed to name the service")
 			}
-			args.Name = prog
+			args.Name = nextProg
 		}
 	}
 
