@@ -320,16 +320,28 @@ func handleStart(client *client.Client) error {
 }
 
 func handleStop(client *client.Client) error {
+	// Start the tail before telling the stop, so we get that output, but
+	// also wait for the output to finishe before returning.
+	var done sync.WaitGroup
 	if *stopTail {
 		*tailService = *stopService
 		*tailFollow = true
-		go handleTail(client)
+		*tailNum = 10
+
+		done.Add(1)
+		go func() {
+			defer done.Done()
+
+			handleTail(client)
+		}()
 	}
 
 	info, err := client.Stop(*stopService)
 	if err == nil {
 		fmt.Println(info)
 	}
+
+	done.Wait()
 	return err
 }
 
