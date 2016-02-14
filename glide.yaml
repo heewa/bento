@@ -2,6 +2,11 @@ package: github.com/heewa/bento
 import:
 - package: github.com/inconshreveable/log15
 - package: gopkg.in/alecthomas/kingpin.v2
+  # Use this specific version to get shell completion before there's a
+  # release including it.
+  vcs: git
+  version: a833a4cbba31545e27e20e43d518417db045cc8e
+  repo: https://github.com/alecthomas/kingpin
 - package: github.com/getlantern/systray
 - package: gopkg.in/yaml.v2
 - package: github.com/blang/semver
