@@ -119,7 +119,15 @@ func main() {
 		exitOnErr(err)
 		defer clnt.Close()
 
-		exitOnErr(clnt.Connect())
+		// Don't start a server for some commands
+		switch cmd {
+		case "version", "shutdown":
+			if clnt.Connect(false) != nil {
+				clnt = nil
+			}
+		default:
+			exitOnErr(clnt.Connect(true))
+		}
 
 		if fn, ok := commandTable[cmd]; !ok {
 			fmt.Fprintf(os.Stderr, "Unknown command: %s\n", cmd)
@@ -184,17 +192,25 @@ func handleInit() error {
 }
 
 func handleShutdown(client *client.Client) error {
+	// Don't shut down if there's no server to connect to.
+	if client == nil {
+		return nil
+	}
+
 	return client.Shutdown()
 }
 
 func handleVersion(client *client.Client) error {
 	fmt.Printf("client version: %s\n", config.Version)
-	fmt.Printf("server version: %s\n", client.ServerVersion)
 
-	if config.Version.GT(client.ServerVersion) {
-		fmt.Println("Client is ahead of server - restart server to upgrade.")
-	} else if config.Version.LT(client.ServerVersion) {
-		fmt.Println("Server is ahead of client - maybe you're running an old client from a different path?")
+	if client != nil {
+		fmt.Printf("server version: %s\n", client.ServerVersion)
+
+		if config.Version.GT(client.ServerVersion) {
+			fmt.Println("Client is ahead of server - restart server to upgrade.")
+		} else if config.Version.LT(client.ServerVersion) {
+			fmt.Println("Server is ahead of client - maybe you're running an old client from a different path?")
+		}
 	}
 
 	return nil

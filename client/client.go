@@ -39,8 +39,9 @@ func New() (*Client, error) {
 	return &Client{}, nil
 }
 
-// Connect tries to connect to a server, running a new one if necessary
-func (c *Client) Connect() error {
+// Connect tries to connect to a server. If startServer is true, and
+// connection fails, try to start a new server.
+func (c *Client) Connect(startServer bool) error {
 	c.Close()
 
 	// Wait a bit for the service to start, but not forever. Since net calls
@@ -59,6 +60,9 @@ func (c *Client) Connect() error {
 			log.Debug("Error connecting to server", "err", err)
 		} else if !os.IsNotExist(err) {
 			log.Error("Problem with fifo", "err", err)
+			clientChan <- nil
+			return
+		} else if !startServer {
 			clientChan <- nil
 			return
 		}
