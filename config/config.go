@@ -19,6 +19,12 @@ const (
 	configFile        = "config.yml"
 	serviceConfigFile = "services.yml"
 
+	// Just regular constants
+
+	// EscalationInterval is used as the default value when none is given to
+	// service.Stop() as the time to wait before increasing urgency of signal
+	EscalationInterval = 10 * time.Second
+
 	defaultConfig = `# Config for Bento
 # See https://github.com/heewa/bento
 

@@ -165,9 +165,13 @@ func (s *Service) Start(updates chan<- Info) error {
 }
 
 // Stop stops running the service
-func (s *Service) Stop() error {
+func (s *Service) Stop(escalationInterval time.Duration) error {
 	if !s.Running() {
 		return nil
+	}
+
+	if escalationInterval == 0 {
+		escalationInterval = config.EscalationInterval
 	}
 
 	// Try a sequence increasingly urgent signals
@@ -181,7 +185,7 @@ func (s *Service) Stop() error {
 
 		// Wait a bit for process to die
 		select {
-		case <-time.After(10 * time.Second):
+		case <-time.After(escalationInterval):
 		case <-s.exitChan:
 			// Consider this the user's stop, not an unrelated exit.
 			func() {

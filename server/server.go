@@ -140,7 +140,15 @@ func (s *Server) Init(_ bool, _ *bool) error {
 			go func() {
 				defer wait.Done()
 
-				if err := s.Stop(StopArgs{srvc.Conf.Name}, nil); err != nil {
+				// Shut down with a shorter escalation interval, cuz we might
+				// not have time to wait that long (like computer might be
+				// shutting down, or user logging out, or user gets impatient
+				// and sends kill signal to bento).
+				args := StopArgs{
+					Name:               srvc.Conf.Name,
+					EscalationInterval: 3 * time.Second,
+				}
+				if err := s.Stop(args, nil); err != nil {
 					log.Warn("Failed to stop service during shutdown", "service", srvc.Conf.Name, "err", err)
 				}
 			}()
@@ -218,7 +226,7 @@ func (s *Server) removeService(name string) error {
 		return nil
 	}
 
-	if err := srvc.Stop(); err != nil {
+	if err := srvc.Stop(0); err != nil {
 		return err
 	}
 

@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"time"
 
 	log "github.com/inconshreveable/log15"
 
@@ -11,6 +12,9 @@ import (
 // StopArgs -
 type StopArgs struct {
 	Name string
+
+	// Time to wait between escalation signals to the service's process
+	EscalationInterval time.Duration
 }
 
 // StopResponse -
@@ -40,7 +44,7 @@ func (s *Server) Stop(args StopArgs, reply *StopResponse) (err error) {
 	}
 
 	log.Info("Stopping service", "service", serv.Conf.Name)
-	err = serv.Stop()
+	err = serv.Stop(args.EscalationInterval)
 
 	// Set info regarless of error
 	if reply != nil {
