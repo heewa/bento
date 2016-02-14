@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -66,7 +67,15 @@ var (
 
 	autoStartSymbol     = color.WhiteString("↑")
 	restartOnExitSymbol = color.WhiteString("↺")
+
+	colorPattern      = regexp.MustCompile("\x1b[^m]*m")
+	multiSpacePattern = regexp.MustCompile("   *")
 )
+
+// PlainString gets an uncolored string
+func (i Info) PlainString() string {
+	return multiSpacePattern.ReplaceAllString(colorPattern.ReplaceAllString(i.String(), ""), " ")
+}
 
 // String gets a user friendly string about a service.
 func (i Info) String() string {

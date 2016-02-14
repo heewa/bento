@@ -35,6 +35,6 @@ func (item *ServiceItem) Set(info service.Info) {
 	if len(info.Tail) > 0 {
 		item.menu.SetTooltip(strings.Join(info.Tail, "\n"))
 	} else {
-		item.menu.SetTooltip(info.String())
+		item.menu.SetTooltip(info.PlainString())
 	}
 }
