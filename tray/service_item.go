@@ -17,11 +17,11 @@ type ServiceItem struct {
 
 // Set updates with Service info
 func (item *ServiceItem) Set(info service.Info) {
-	// If it ran and failed, mention that in title
-	if !info.Running && info.Pid != 0 && !info.Succeeded {
-		item.menu.SetTitle(fmt.Sprintf("%s <failed>", info.Name))
-	} else {
+	if info.Running || info.Succeeded || info.Pid == 0 {
 		item.menu.SetTitle(info.Name)
+	} else {
+		// If it ran and failed, mention that in title
+		item.menu.SetTitle(fmt.Sprintf("%s <failed>", info.Name))
 	}
 
 	if info.Running && !item.info.Running {
