@@ -222,6 +222,7 @@ func RemoveService(name string) {
 	quitItem = serviceItems[lastIndex].menu
 	quitItem.SetTitle(quitTitle)
 	quitItem.SetTooltip(quitTooltip)
+	quitItem.Uncheck()
 
 	// Remove last service item from slice
 	serviceItems = serviceItems[:lastIndex]

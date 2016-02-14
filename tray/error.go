@@ -62,6 +62,7 @@ func SetError(err *Error) {
 
 	errorItem.SetTitle(err.title)
 	errorItem.SetTooltip(err.tooltip)
+	errorItem.Uncheck()
 }
 
 // ClearError clears the first item in the tray if it's an error by shuffling
@@ -93,8 +94,10 @@ func ClearError() {
 	// Fix up quit & dead's texts
 	quitItem.SetTitle(quitTitle)
 	quitItem.SetTooltip(quitTooltip)
+	quitItem.Uncheck()
 	newDead.SetTitle("")
 	newDead.SetTooltip("")
+	newDead.Uncheck()
 
 	// Push newly created dead item to front of dead list
 	deadItems = append([]*systray.MenuItem{newDead}, deadItems...)
