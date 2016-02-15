@@ -76,8 +76,8 @@ var (
 
 	// Cmdline args that override conf:
 	verbosity = kingpin.Flag("verbose", "Increase log verbosity, can be used multiple times").Short('v').Counter()
-	fifoPath  = kingpin.Flag("fifo", "Path to fifo used to communicate between client and server").String()
-	logPath   = kingpin.Flag("log", "Path to server's log file, or '-' for stdout").String()
+	fifoPath  = kingpin.Flag("fifo", "Path to fifo used to communicate between client and server").Hidden().String()
+	logPath   = kingpin.Flag("log", "Path to server's log file, or '-' for stdout").Hidden().String()
 )
 
 // ConfFormat is the yaml definition of the config file
