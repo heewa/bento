@@ -2,8 +2,7 @@ Bento is a service manager for OS X with a robust cli interface, and a light sys
 
 ## Installing
 
-* Using [Homebrew](http://brew.sh/): `brew tap heewa/tap && brew install bento`
-* Building manually (assuming you have a Go environment set up): `go get -v github.com/heewa/bento`, update with `go get -u -v github.com/heewa/bento`. If just running `bento` doesn’t work after that, you might need to set add `$GOPATH/bin` to your `$PATH` env var.
+The easiest is to use [Homebrew](http://brew.sh/): `brew install heewa/tap/bento` or `brew install --devel heewa/tap/bento` for the development version, updated more frequently.
 
 ## Quickstart
 
@@ -60,3 +59,9 @@ After changing the file, reload the service configuration without restarting wit
 * `env`: A map of environment variable names to values.
 * `auto-start`: If true, this service will be automatically started by bento when it first runs.
 * `restart-on-exit`: If true, bento will attempt to restart the service if it exits. However, `bento stop` will cause the service to stop until explicitly started again.
+
+## Building
+
+To build it, you need to have a Go environment set up, then `go get -v github.com/heewa/bento`, update with `go get -u -v github.com/heewa/bento`. If just running `bento` doesn’t work after that, you might need to set add `$GOPATH/bin` to your `$PATH` env var.
+
+If you also installed bento with Homebrew, you'll already have man pages & bash completion. Otherwise, you can generate a man page with `bento --help-man`, and bash completion with `bento --completion-script-bash`.
