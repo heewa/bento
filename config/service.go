@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/user"
 	"reflect"
+	"strings"
 	"time"
 
 	"gopkg.in/yaml.v2"
@@ -33,6 +34,13 @@ type Service struct {
 	Temp       bool          `yaml:",omitempty"`
 	CleanAfter time.Duration `yaml:",omitempty"`
 }
+
+// ServiceByName implements the sort interface
+type ServiceByName []Service
+
+func (i ServiceByName) Len() int           { return len(i) }
+func (i ServiceByName) Swap(a, b int)      { i[b], i[a] = i[a], i[b] }
+func (i ServiceByName) Less(a, b int) bool { return strings.Compare(i[a].Name, i[b].Name) < 0 }
 
 // Sanitize checks a config for valitidy, and fixes up values that are dynamic
 // or have defaults.

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/user"
+	"reflect"
 	"sort"
 	"strings"
 	"sync"
@@ -134,6 +135,14 @@ func main() {
 			}
 		default:
 			exitOnErr(clnt.Connect(true))
+		}
+
+		// Check the services conf for changes, to notify user
+		switch cmd {
+		case "version", "shutdown", "reload":
+			// Not relevant
+		default:
+			checkForServiceConfChanges(clnt)
 		}
 
 		if fn, ok := commandTable[cmd]; !ok {
@@ -523,4 +532,42 @@ func getServicesForAutocomplete() []config.Service {
 	}
 
 	return nil
+}
+
+// checkForServiceConfChanges compares the services config file to what the
+// server has, and notifies user of changes. Errors are logged with Debug,
+// but otherwise ignored. Any real errors will be more appropriately handled
+// by the actual command being called.
+func checkForServiceConfChanges(clnt *client.Client) {
+	// Some commands don't need a server connection, so ignore those
+	if clnt == nil {
+		return
+	}
+
+	localServiceConf, err := config.LoadServiceFile(config.ServiceConfigFile)
+	if err != nil {
+		log.Debug("Failed to load services for diffing", "path", config.ServiceConfigFile, "err", err)
+		return
+	}
+
+	serverServices, err := clnt.List(false, false)
+	if err != nil {
+		log.Debug("Failed to get server's services for diffing", "err", err)
+		return
+	}
+
+	serverServiceConf := make([]config.Service, 0, len(serverServices))
+	for _, srvc := range serverServices {
+		serverServiceConf = append(serverServiceConf, *srvc.Service)
+	}
+
+	// Sort before compare
+	sort.Sort(config.ServiceByName(localServiceConf))
+	sort.Sort(config.ServiceByName(serverServiceConf))
+	if reflect.DeepEqual(localServiceConf, serverServiceConf) {
+		return
+	}
+
+	// TODO: get more specific
+	log.Warn("Looks like there are unloaded changes to the services config file. Run 'bento reload' to update.")
 }
