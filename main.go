@@ -206,7 +206,10 @@ func handleShutdown(client *client.Client) error {
 func handleVersion(client *client.Client) error {
 	fmt.Printf("client version: %s\n", config.Version)
 
-	if client != nil {
+	if client == nil {
+		// No server, so the version would be our version when we run it
+		fmt.Printf("server version: %s\n", config.Version)
+	} else {
 		fmt.Printf("server version: %s\n", client.ServerVersion)
 
 		if config.Version.GT(client.ServerVersion) {
