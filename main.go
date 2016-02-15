@@ -78,6 +78,8 @@ var (
 
 	versionCmd = kingpin.Command("version", "List client & server versions")
 
+	versionFlag = kingpin.Version(config.Version.String())
+
 	// Function table for commands
 	commandTable = map[string](func(*client.Client) error){
 		"shutdown": handleShutdown,
