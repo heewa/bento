@@ -5,7 +5,7 @@ import:
   # Use this specific version to get shell completion before there's a
   # release including it.
   vcs: git
-  version: autocomplete-args
+  version: hide-hidden-cmds
   repo: https://github.com/heewa/kingpin
 - package: github.com/getlantern/systray
 - package: gopkg.in/yaml.v2
