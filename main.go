@@ -78,8 +78,6 @@ var (
 
 	versionCmd = kingpin.Command("version", "List client & server versions")
 
-	versionFlag = kingpin.Version(config.Version.String())
-
 	// Function table for commands
 	commandTable = map[string](func(*client.Client) error){
 		"shutdown": handleShutdown,
@@ -107,6 +105,12 @@ func exitOnErr(err error) {
 }
 
 func main() {
+	// Before parsing, set up kingping's main app
+	kingpin.CommandLine.Name = "bento"
+	kingpin.CommandLine.Help = "A background service manager for OS X."
+	kingpin.CommandLine.Author("Heewa Barfchin")
+	kingpin.Version(config.Version.String())
+
 	cmd := kingpin.Parse()
 
 	// Set up logging twice, cuz conf might change it, but it also logs
