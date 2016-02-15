@@ -183,11 +183,16 @@ func (c *Client) Call(method string, args interface{}, reply interface{}) error 
 	if config.Version.LT(c.ServerVersion) {
 		fmt.Fprintf(os.Stderr, "Note: client version (%s) is behind server version (%s). Upgrade client.\n", config.Version, c.ServerVersion)
 	} else if config.Version.GT(c.ServerVersion) {
-		fmt.Fprintf(os.Stderr, "Note: client version (%s) is ahead of server version (%s). Upgrade server.\n", config.Version, c.ServerVersion)
+		fmt.Fprintf(os.Stderr, "Note: client version (%s) is ahead of server version (%s). Update server by restarting it.\n", config.Version, c.ServerVersion)
 	}
 
-	// Outright refuse to use a server that's too far ahead/behind
+	// Outright refuse to use a server that's too far ahead/behind.
 	if c.ServerVersion.Major != config.Version.Major || c.ServerVersion.Minor != config.Version.Minor {
+		return fmt.Errorf("Client & Server versions are incompatible.")
+	}
+
+	// On pre-release builds, refuse any mismatch - things are changing too fast
+	if !config.Version.Equals(c.ServerVersion) && (len(config.Version.Pre) > 0 || len(c.ServerVersion.Pre) > 0) {
 		return fmt.Errorf("Client & Server versions are incompatible.")
 	}
 
