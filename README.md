@@ -45,8 +45,7 @@ You can save services permanently in a simple yaml file at `~/.bento/services.ym
   restart-on-exit: true
 - name: Memcache
   program: memcached
-  args:
-    - -v
+  args: ['-v']
   auto-start: true
 ```
 
