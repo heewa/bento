@@ -191,27 +191,33 @@ func (s *Server) listServices() []*service.Service {
 }
 
 func (s *Server) addService(serv *service.Service, replace bool) error {
-	s.servicesLock.Lock()
-	defer s.servicesLock.Unlock()
+	err := func() error {
+		s.servicesLock.Lock()
+		defer s.servicesLock.Unlock()
 
-	current := s.services[serv.Conf.Name]
-	if current != nil && !replace {
-		return fmt.Errorf("Service already exists (%s)", serv.Conf.Name)
-	} else if current != nil && current.Running() {
-		return fmt.Errorf("Can't replace a running service (%s)", serv.Conf.Name)
+		current := s.services[serv.Conf.Name]
+		if current != nil && !replace {
+			return fmt.Errorf("Service already exists (%s)", serv.Conf.Name)
+		} else if current != nil && current.Running() {
+			return fmt.Errorf("Can't replace a running service (%s)", serv.Conf.Name)
+		}
+
+		s.services[serv.Conf.Name] = serv
+
+		// Notify watchers
+		s.serviceUpdates <- serv.Info()
+
+		return nil
+	}()
+	if err != nil {
+		return err
 	}
 
-	s.services[serv.Conf.Name] = serv
-
-	// Notify watchers
-	s.serviceUpdates <- serv.Info()
-
 	if serv.Conf.AutoStart {
-		go func() {
-			if err := s.Start(StartArgs{serv.Conf.Name}, nil); err != nil {
-				log.Warn("Failed to auto-start service", "service", serv.Conf.Name, "err", err)
-			}
-		}()
+		// Don't fail an add if the service failed to start, but do warn.
+		if err := s.Start(StartArgs{serv.Conf.Name}, nil); err != nil {
+			log.Warn("Failed to auto-start service", "service", serv.Conf.Name, "err", err)
+		}
 	}
 
 	return nil
