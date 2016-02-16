@@ -1,8 +1,6 @@
 hash: 297b276ca2f97abbed1a814bbfdbc6e6968e2fdfeb65a47357df6deb38489c0b
-updated: 2016-02-15T13:58:23.035752825-05:00
+updated: 2016-02-16T13:48:44.687054303-05:00
 imports:
-- name: github.com/alecthomas/kingpin
-  version: a833a4cbba31545e27e20e43d518417db045cc8e
 - name: github.com/alecthomas/template
   version: 14fd436dd20c3cc65242a9f396b61bfc8a3926fc
 - name: github.com/alecthomas/units
@@ -26,7 +24,7 @@ imports:
 - name: github.com/skratchdot/open-golang
   version: c8748311a7528d0ba7330d302adbc5a677ef9c9e
 - name: gopkg.in/alecthomas/kingpin.v2
-  version: 316b552013feab377d9b5fff40536525efc3d0e4
+  version: 21652f8b369143c3332b41bfbdc3dc878102feec
   repo: https://github.com/heewa/kingpin
   vcs: git
 - name: gopkg.in/yaml.v2
