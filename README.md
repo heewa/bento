@@ -1,40 +1,79 @@
 Bento is a service manager for OS X with a robust cli interface, and a light system tray UI. It’s designed for personal use, as opposed to init.d or upstart.
 
-## Installing
+## Install Bento
 
-The easiest is to use [Homebrew](http://brew.sh/): `brew install heewa/tap/bento` or `brew install --devel heewa/tap/bento` for the development version, updated more frequently.
+The easiest is to use [Homebrew](http://brew.sh/): `brew install heewa/tap/bento` or `brew install --devel heewa/tap/bento` for the development version, updated more frequently (devel requires Go 1.5+).
 
-## Quickstart
+## What Does Bento Do?
 
-You can either run things as quick, temporary service: `bento run-once mongod`, which will run Mongo DB in the background, or you can keep saves services in a simple yaml file, `~/.bento/services.yml`:
+Bento runs things in the background, so you don't have to leave terminals open for each of them.
+```bash
+$ bento run-once mongod
+  ⌁ mongod               started now pid:13077 cmd:'mongod'
+  
+$ bento run-once redis-server
+  ⌁ redis-server         started now pid:41059 cmd:'redis-server'
 
+$ bento list
+  ⌁ redis-server         started 2 seconds ago pid:41059 cmd:'redis-server'
+  ⌁ mongod               started 4 seconds ago pid:41012 cmd:'mongod'
+```
+
+Easily save services to start & stop quickly with simple yaml files.
 ```yaml
 - name: Mongo
   program: mongod
+  args: ["--config", "/path/to/mongo.conf"]
+```
+```bash
+$ bento reload
+Added 1 new services:
+  ● Mongo                unstarted cmd:'mongod --config /path/to/mongo.conf'
+
+$ bento start Mongo
+  ⌁ Mongo             ↺  started now pid:15293 cmd:'mongod --config /path/to/mongo.conf'
+
+$ bento stop Mongo
+  ✔ Mongo             ↺  ended now pid:14498 cmd:'mongod --config /path/to/mongo.conf'
+```
+
+Bento can keep services running by restarting them when they exit, and auto start on login.
+```yaml
+- name: WorkDashboardTunnel
+  program: ssh
+  args: ["-L", "8080:firewalled-server:80", "-N", "-n", "workuser@gateway.work.com"]
   auto-start: true
   restart-on-exit: true
 ```
+```bash
+$ bento reload
+Added 1 new services:
+  ⌁ WorkDashboardTunnel   ↺  started now pid:34303 cmd:'ssh -L 8080:firewalled-serve...'
 
-Then manage it like: `bento start Mongo`, `bento stop Mongo`, `bento tail --follow Mongo`, etc. After you edit the file, you need to let Bento know you're done and to reaload it: `bento reload`.
+$ sleep 10 ; kill $(bento pid WorkDashboardTunnel)
+
+$ bento list
+  ⌁ WorkDashboardTunnel   ↺  started now pid:34303 cmd:'ssh -L 8080:firewalled-serve...'
+```
+
+Check on services whenever you want.
+```bash
+$ bento tail -n 100 redis # like regular tail command
+
+$ bento tail -f redis # follows output from a running service, similar to tail -f
+
+$ bento tail -F redis # follows restarts to a service, similar to tail -F
+```
+
+Bento has bash tab completion.
+```bash
+$ bento start Wor<tab>
+
+$ bento start WorkDashboardTunnel
+```
 
 
-## Running
-
-Just try `bento` in the command line! You can get more detailed help for a specific command like `bento help <cmd>` or `bento <cmd> --help`.
-
-### Start a new service
-
-You can run any command as a new, temporary (unsaved) service like: `bento run-once memcached`. If it takes arguments, you might get away with just appending them, but if they're flags, bento will try to parse them itself, so separate them like: `bento run-once memcached -- -v`.
-
-I find it useful to start off tailing output of new services to make sure I got it right: `bento run-once --tail redis-server`. You can hit `<ctrl-c>` to interrupt bento, and it won't affect the service.
-
-To see the _stdout_ & _stderr_ of a service, use `bento tail`. Add a `-f` to follow the output, much like the unix `tail` command. Similarly, `-F` will follow the output through restarts.
-
-### Managing services
-
-See what services you have with: `bento list`. You can start & stop services: `bento start <name>` & `bento stop <name>`. You can remove finished (exitted) temporary services with `bento clean`, though they'll be auto-removed after some time anyway.
-
-### Saving services
+## Saving services
 
 You can save services permanently in a simple yaml file at `~/.bento/services.yml`. The file should contain a list of service definitions like:
 
@@ -46,11 +85,12 @@ You can save services permanently in a simple yaml file at `~/.bento/services.ym
   program: memcached
   args: ['-v']
   auto-start: true
+  restart-on-exit: true
 ```
 
 After changing the file, reload the service configuration without restarting with: `bento reload`. If you're having trouble getting a service right, try running it as a temp service (`bento run-once --args cmd -- cmd-args`), then get a yaml config for it with `bento list -l` (long list).
 
-#### Service Configuration Options
+### Service Configuration Options
 
 * `name`: (required) The name of the service. You'll specify this to manage the service on the cli.
 * `program`: (required) A full path to the binary to run. This is a regular path, not a bash command.
