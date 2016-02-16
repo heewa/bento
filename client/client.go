@@ -196,6 +196,15 @@ func (c *Client) Call(method string, args interface{}, reply interface{}) error 
 		return fmt.Errorf("Client & Server versions are incompatible.")
 	}
 
+	return c.CallWithoutVersionCheck(method, args, reply)
+}
+
+// CallWithoutVersionCheck skips checking that the client & server versions match
+func (c *Client) CallWithoutVersionCheck(method string, args interface{}, reply interface{}) error {
+	if c == nil {
+		return fmt.Errorf("Failed to initialize server connection")
+	}
+
 	err := c.client.Call(method, args, reply)
 	if err == io.EOF || err == io.ErrUnexpectedEOF {
 		err = fmt.Errorf("Lost connection to backend server during a call to %s", method)

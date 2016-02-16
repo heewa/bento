@@ -213,7 +213,10 @@ func handleShutdown(client *client.Client) error {
 		return nil
 	}
 
-	return client.Shutdown()
+	// Call the RPC directly, to avoid version-mismatch checks. The shutdown cmd
+	// sould maintain a stable interface, and it's supposed to be used to update
+	// the server specifically -during- a mismatch.
+	return client.CallWithoutVersionCheck("Server.Exit", false, nil)
 }
 
 func handleVersion(client *client.Client) error {
