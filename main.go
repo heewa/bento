@@ -263,7 +263,7 @@ func handleReload(client *client.Client) error {
 	if len(reply.NewServices) > 0 {
 		fmt.Printf("Added %d new services:\n", len(reply.NewServices))
 		for _, srvc := range reply.NewServices {
-			fmt.Printf("    %s\n", srvc)
+			fmt.Println(srvc)
 		}
 		fmt.Println("")
 	}
@@ -271,7 +271,7 @@ func handleReload(client *client.Client) error {
 	if len(reply.UpdatedServices) > 0 {
 		fmt.Printf("Updated %d existing services:\n", len(reply.UpdatedServices))
 		for _, srvc := range reply.UpdatedServices {
-			fmt.Printf("    %s\n", srvc)
+			fmt.Println(srvc)
 		}
 		fmt.Println("")
 	}
@@ -279,7 +279,7 @@ func handleReload(client *client.Client) error {
 	if len(reply.DeprecatedServices) > 0 {
 		fmt.Printf("Marked %d running, but removed services for removal after exit:\n", len(reply.DeprecatedServices))
 		for _, srvc := range reply.DeprecatedServices {
-			fmt.Printf("    %s\n", srvc)
+			fmt.Println(srvc)
 		}
 		fmt.Println("")
 	}
@@ -287,7 +287,7 @@ func handleReload(client *client.Client) error {
 	if len(reply.RemovedServices) > 0 {
 		fmt.Printf("Removed %d services:\n", len(reply.RemovedServices))
 		for _, name := range reply.RemovedServices {
-			fmt.Printf("    %s\n", name)
+			fmt.Printf("  - %s\n", name)
 		}
 		fmt.Println("")
 	}
