@@ -6,7 +6,7 @@ The easiest is to use [Homebrew](http://brew.sh/): `brew install heewa/tap/bento
 
 ## What Does Bento Do?
 
-Bento runs things in the background, so you don't have to leave terminals open for each of them.
+* Bento runs things in the background, so you don't have to leave terminals open for each of them.
 ```bash
 $ bento run-once mongod
   ⌁ mongod               started now pid:13077 cmd:'mongod'
@@ -16,10 +16,10 @@ $ bento run-once redis-server
 
 $ bento list
   ⌁ redis-server         started 2 seconds ago pid:41059 cmd:'redis-server'
-  ⌁ mongod               started 4 seconds ago pid:41012 cmd:'mongod'
+  ⌁ mongod               started 4 seconds ago pid:13077 cmd:'mongod'
 ```
 
-Easily save services to start & stop quickly with simple yaml files.
+* Easily save services to start & stop quickly with simple yaml files.
 ```yaml
 - name: Mongo
   program: mongod
@@ -34,10 +34,10 @@ $ bento start Mongo
   ⌁ Mongo             ↺  started now pid:15293 cmd:'mongod --config /path/to/mongo.conf'
 
 $ bento stop Mongo
-  ✔ Mongo             ↺  ended now pid:14498 cmd:'mongod --config /path/to/mongo.conf'
+  ✔ Mongo             ↺  ended now pid:15293 cmd:'mongod --config /path/to/mongo.conf'
 ```
 
-Bento can keep services running by restarting them when they exit, and auto start on login.
+* Bento can keep services running by restarting them when they exit, and auto start on login.
 ```yaml
 - name: WorkDashboardTunnel
   program: ssh
@@ -56,7 +56,7 @@ $ bento list
   ⌁ WorkDashboardTunnel   ↺  started now pid:34303 cmd:'ssh -L 8080:firewalled-serve...'
 ```
 
-Check on services whenever you want.
+* Check on services whenever you want.
 ```bash
 $ bento tail -n 100 redis # like regular tail command
 
@@ -65,7 +65,7 @@ $ bento tail -f redis # follows output from a running service, similar to tail -
 $ bento tail -F redis # follows restarts to a service, similar to tail -F
 ```
 
-Bento has bash tab completion.
+* Bento has bash tab completion.
 ```bash
 $ bento start Wor<tab>
 
