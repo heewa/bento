@@ -558,7 +558,9 @@ func checkForServiceConfChanges(clnt *client.Client) {
 
 	serverServiceConf := make([]config.Service, 0, len(serverServices))
 	for _, srvc := range serverServices {
-		serverServiceConf = append(serverServiceConf, *srvc.Service)
+		if !srvc.Temp {
+			serverServiceConf = append(serverServiceConf, *srvc.Service)
+		}
 	}
 
 	// Sort before compare
