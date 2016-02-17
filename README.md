@@ -4,6 +4,13 @@ Bento is a service manager for OS X with a robust cli interface, and a light sys
 
 The easiest is to use [Homebrew](http://brew.sh/): `brew install heewa/tap/bento` or `brew install --devel heewa/tap/bento` for the development version, updated more frequently (devel requires Go 1.5+).
 
+If you want bash completion, install that with homebrew too: `brew install bash-completion`, and add this to your `~/.bashrc`:
+```bash
+  if [ -f $(brew --prefix)/etc/bash_completion ]; then
+    . $(brew --prefix)/etc/bash_completion
+  fi
+```
+
 *Note:* while Bento is still in development, changes are made frequently. So occasionally upgrade: `brew update && brew upgrade bento`
 
 ## What Does Bento Do?
