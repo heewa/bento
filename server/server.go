@@ -135,6 +135,8 @@ func (s *Server) Init(_ bool, _ *bool) error {
 	// Stop all services
 	var wait sync.WaitGroup
 	for _, srvc := range s.services {
+		srvc := srvc
+
 		if srvc.Running() {
 			wait.Add(1)
 			go func() {
