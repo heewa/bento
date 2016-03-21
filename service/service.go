@@ -179,8 +179,10 @@ func (s *Service) Start(updates chan<- Info) error {
 // Stop stops running the service
 func (s *Service) Stop(escalationInterval time.Duration) (err error) {
 	if !s.Running() {
+		s.log.Debug("Service already stopped")
 		return nil
 	}
+	s.log.Debug("Stopping service")
 
 	if escalationInterval == 0 {
 		escalationInterval = config.EscalationInterval
@@ -188,6 +190,7 @@ func (s *Service) Stop(escalationInterval time.Duration) (err error) {
 
 	pid := s.Pid()
 	if pid == 0 {
+		s.log.Warn("Failed to get pid to stop service")
 		return fmt.Errorf("Failed to get service's pid to stop", "service", s.Conf.Name)
 	}
 
@@ -199,7 +202,7 @@ func (s *Service) Stop(escalationInterval time.Duration) (err error) {
 	// group id) that we had the parent (the process we started) create.
 	pids := []int{pid}
 	if pgid, err := syscall.Getpgid(pid); err != nil {
-		log.Warn("Failed to get pgid in case of a failed service stop", "service", s.Conf.Name, "pid", pid, "err", err)
+		s.log.Warn("Failed to get pgid in case of a failed service stop", "pid", pid, "err", err)
 	} else {
 		pids = append(pids, -pgid)
 	}
@@ -236,6 +239,7 @@ func (s *Service) Stop(escalationInterval time.Duration) (err error) {
 		for _, sig := range signals {
 			s.log.Debug("Sending service's proc signal", "signal", sig, "pid", pid)
 			if err := syscall.Kill(pid, sig); err != nil {
+				s.log.Warn("Failed to send signal to service", "signal", sig, "pid", pid, "err", err)
 				return err
 			}
 
@@ -243,11 +247,13 @@ func (s *Service) Stop(escalationInterval time.Duration) (err error) {
 			select {
 			case <-time.After(escalationInterval):
 			case <-s.exitChan:
+				s.log.Info("Stopped service")
 				return nil
 			}
 		}
 	}
 
+	s.log.Warn("Failed to stop service")
 	return fmt.Errorf("Failed to stop service")
 }
 
