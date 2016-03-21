@@ -228,42 +228,27 @@ func RemoveService(name string) {
 	serviceItems = serviceItems[:lastIndex]
 }
 
-func handleQuit() {
-	log.Debug("Clicked on quit")
-
-	if srvr == nil {
-		// Never had a chance to start server, so just quit tray
-		go Quit()
-	} else {
-		var nothing bool
-		if err := srvr.Exit(nothing, &nothing); err != nil {
-			log.Error("Failed to exit server", "err", err)
-
-			// Since server won't be exitting and quitting the
-			// tray, do that ourselves
-			go Quit()
-		}
-	}
-}
-
 // Since items change roles over time, look up logical item at each click
 func handleClick(click <-chan interface{}, index int) {
-	// Handle early returns when holding lock
-	itemLock.RLock()
-	defer itemLock.RUnlock()
-
 	for {
-		itemLock.RUnlock()
-		<-click
+		_, ok := <-click
+		if !ok {
+			return
+		}
 		log.Debug("Click on menu item", "index", index)
-		itemLock.RLock()
 
-		if index == 0 && errorItem != nil {
-			// Click on error, need to clear it, but that thing needs the
-			// lock we're holding, so go it in a goroutine that'll unblock
-			// after we're done.
-			go ClearError()
-		} else {
+		func() {
+			itemLock.RLock()
+			defer itemLock.RUnlock()
+
+			if index == 0 && errorItem != nil {
+				// Click on error, need to clear it, but that thing needs the
+				// lock we're holding, so go it in a goroutine that'll unblock
+				// after we're done.
+				go ClearError()
+				return
+			}
+
 			// To make indexing into serviceItems easier, handle conditional
 			// errorItem by fixing up index
 			index := index
@@ -284,9 +269,22 @@ func handleClick(click <-chan interface{}, index int) {
 					}
 				}
 			} else if index == len(serviceItems) {
-				go handleQuit()
-				return
+				log.Debug("Clicked on quit")
+
+				if srvr == nil {
+					// Never had a chance to start server, so just quit tray
+					go Quit()
+				} else {
+					var nothing bool
+					if err := srvr.Exit(nothing, &nothing); err != nil {
+						log.Error("Failed to exit server", "err", err)
+
+						// Since server won't be exitting and quitting the
+						// tray, do that ourselves
+						go Quit()
+					}
+				}
 			} // else it's a dead item, ignore
-		}
+		}()
 	}
 }
