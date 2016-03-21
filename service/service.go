@@ -37,6 +37,7 @@ type Service struct {
 	userStopped bool
 
 	Output output
+	log    log.Logger
 }
 
 // New creates a new Service
@@ -52,6 +53,8 @@ func New(conf config.Service) (*Service, error) {
 		Conf:      conf,
 		startChan: startChan,
 		exitChan:  exitChan,
+
+		log: log.New("service", conf.Name),
 	}, nil
 }
 
@@ -95,7 +98,7 @@ func (s *Service) Start(updates chan<- Info) error {
 	if s.Running() {
 		return fmt.Errorf("Service already running.")
 	}
-	log.Debug("Starting service", "service", s.Conf.Name)
+	s.log.Debug("Starting service")
 
 	// Update right after starting, but before we can race with the end-watcher
 	defer func() {
@@ -168,7 +171,7 @@ func (s *Service) Start(updates chan<- Info) error {
 
 	close(s.startChan)
 
-	log.Info("Started service", "service", s.Conf.Name, "pid", s.process.Pid)
+	s.log.Info("Started service", "pid", s.process.Pid)
 
 	return nil
 }
@@ -231,7 +234,7 @@ func (s *Service) Stop(escalationInterval time.Duration) (err error) {
 
 	for _, pid := range pids {
 		for _, sig := range signals {
-			log.Debug("Sending service's proc signal", "service", s.Conf.Name, "signal", sig, "pid", pid)
+			s.log.Debug("Sending service's proc signal", "signal", sig, "pid", pid)
 			if err := syscall.Kill(pid, sig); err != nil {
 				return err
 			}
@@ -333,7 +336,7 @@ func (s *Service) watchForExit(cmd *exec.Cmd, updates chan<- Info, outputDone *s
 
 	// Wait for exit
 	err := cmd.Wait()
-	log.Info("Service exited", "name", s.Conf.Name, "program", s.Conf.Program, "err", err)
+	s.log.Info("Service exited", "program", s.Conf.Program, "err", err)
 
 	// Update after we let go of lock
 	defer func() {
